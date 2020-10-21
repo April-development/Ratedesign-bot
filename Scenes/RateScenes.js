@@ -101,10 +101,14 @@ new (class RateScene extends Scene {
   async savePost(ctx) {
     const cache = ctx.session.cache,
       postId = ctx.match[1];
+    if (cache.saved_status) {
+      await ctx.answerCbQuery("Уже сохранено");
+      return;    
+    } 
     cache.saved_status = true;
     await ctx.editMessageReplyMarkup({
       inline_keyboard: inlineRate(cache, postId)
-    });
+    }).catch(()=>{});
     await ctx.base.savePost(ctx.chat.id, postId);
     await ctx.answerCbQuery("Сохранено");
   }
@@ -113,20 +117,24 @@ new (class RateScene extends Scene {
     const cache = ctx.session.cache,
       postId = ctx.match[2],
       rate = ctx.match[1];
+    if (cache.rated_status == +rate) {
+      await ctx.answerCbQuery("Вы уже поставили " + rate);
+      return;    
+    } 
     cache.rated_status = +rate;
     await ctx.editMessageReplyMarkup({
       inline_keyboard: inlineRate(cache, postId)
-    });
+    }).catch(()=>{});
     await ctx.base.putRate(ctx.from.id, postId, rate);
     await ctx.base.seenPost(ctx.from.id, postId);
-    await ctx.answerCbQuery("Вы поставили " + cache.rated_status);
+    await ctx.answerCbQuery("Вы поставили " + rate);
   }
 
   async goReports(ctx) {
     const postId = ctx.match[1];
     await ctx.editMessageReplyMarkup({
       inline_keyboard: ctx.session.inlineKeyboard.go("Report").now(ctx.session.cache, postId)
-    });
+    }).catch(()=>{});
     await ctx.answerCbQuery("");
   }
 
@@ -135,7 +143,7 @@ new (class RateScene extends Scene {
       reportId = +ctx.match[1],
       postId = ctx.match[2];
     if (cache.report_status === true) {
-      await ctx.answerCbQuery("");
+      await ctx.answerCbQuery("Жалоба уже отправлена");
       return;
     } 
     cache.report_status = true;
@@ -143,7 +151,7 @@ new (class RateScene extends Scene {
     await ctx.base.seenPost(ctx.from.id, postId);
     await ctx.editMessageReplyMarkup({
       inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
-    }).catch(); // если не нечего менять, оно выкенет ошибку // TODO: сделать отельную функцию
+    }).catch(()=>{}); // если не нечего менять, оно выкенет ошибку // TODO: сделать отельную функцию
     await ctx.answerCbQuery("Жалоба отправлена");
   }
 
@@ -152,11 +160,11 @@ new (class RateScene extends Scene {
     await ctx.editMessageReplyMarkup({
       inline_keyboard: ctx.session.inlineKeyboard.goBack().now(ctx.session.cache, postId)
     });
-    await ctx.answerCbQuery("");
+    await ctx.answerCbQuery("Назад");
   }
   
   async nop(ctx) {
-    await ctx.answerCbQuery("");
+    await ctx.answerCbQuery("Ничего не могу сделать");
   }
 
   async main(ctx) {
@@ -168,7 +176,7 @@ new (class RateScene extends Scene {
       cache.indexWork = index;
       [cache.array, ctx.session.works] = [ctx.session.works, cache.array];
       if (!cache.array[cache.indexWork]) {
-        await ctx.reply("Работы с таким номером не существует, попробуйте заново.");
+        await ctx.reply("Работы с таким номером не существует, попробуйте ещё раз.");
         await user.checkDos(ctx, user.deleteLastNMessage);
         cache.responsedMessageCounter += 2;
       } else {
