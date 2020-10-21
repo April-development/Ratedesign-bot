@@ -124,13 +124,13 @@ class DataBase {
   }
   async deletePost(postId) {
     console.log("deletePost: ", postId);
-    return await global.DataBaseController.remove("Post", { _id: postId });
+    return await global.DataBaseController.remove("Post", { _id: ObjectID(postId) });
   }
   async savePost(userId, postId) {
     console.log("savePost: ", userId, postId);
     let user = await this.getUser(userId);
     let uniqed = false;
-    user.saved.push({ _id: postId });
+    user.saved.push({ _id: ObjectID(postId) });
     [uniqed, user.saved] = uniq(user.saved);
     if (uniqed) {
       await global.DataBaseController.putUser(userId, { saved: user.saved });
@@ -181,7 +181,7 @@ class DataBase {
     post.rates[id] = rate;
     await global.DataBaseController.putPost(post._id, { rates: post.rates });
   }
-  async putReport(postId, userId, reportId)
+  async putReport(postId, userId, reportId) // TODO: Оптимизировать
   {
     console.log("putReport: ", postId, userId, reportId);
     let post = await global.DataBaseController.getPost(postId),

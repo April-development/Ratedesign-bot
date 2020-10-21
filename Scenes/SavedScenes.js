@@ -16,59 +16,53 @@ new (class SavedScene extends Scene {
     //  Получение объекта пользователя из базы
     const saved = (await ctx.base.getUser(ctx.from.id)).saved;
     //  Индексация кеша
-    ctx.session.show = {
-      index: ((saved.length-1) / 8) | 0,
-      size: saved.length,
-      array: saved,
-      status: "many",
+    ctx.session.cache = {
       empty: "Вы пока не сохранили не одну работу.\nДля сохранения работы откройте её и нажмите кнопку \"Сохранить\"",
       for: "просмотра",
     };
+    ctx.user.indexed(ctx, saved);
     //  Отправка пользователю работ
-    ctx.session.show.responsedMessageCounter = await ctx.user.sendPage(ctx);
+    ctx.session.cache.responsedMessageCounter = await ctx.user.sendPage(ctx);
   }
 
   async main(ctx) {
     const user = ctx.user,
-      show = ctx.session.show;
+      cache = ctx.session.cache;
     let index = -1;
     
     if ((index = ["1⃣", "2⃣", "3⃣", "4⃣"].indexOf(ctx.message.text)) != -1) {
-      show.indexWork = index;
-      [show.array, ctx.session.works] = [ctx.session.works, show.array];
-      if (!show.array[show.indexWork]) {
+      cache.indexWork = index;
+      [cache.array, ctx.session.works] = [ctx.session.works, cache.array];
+      if (!cache.array[cache.indexWork]) {
         await ctx.reply("Работы с таким номером не существует, попробуйте заново.");
         await user.checkDos(ctx, user.deleteLastNMessage);
-        show.responsedMessageCounter += 2;
+        cache.responsedMessageCounter += 2;
       } else {
-        show.status = "one";
+        cache.status = "one";
         await user.updateWith(ctx, user.sendWork);
       }
-      [show.array, ctx.session.works] = [ctx.session.works, show.array];
+      [cache.array, ctx.session.works] = [ctx.session.works, cache.array];
       return;
     }
     
     switch (ctx.message.text) {
     case "⏩ Следующая страница":
-      show.status = "many";
       await user.updateWith(user.shiftIndex(ctx, -1), user.sendPage);
       break;
     case "⏪ Предыдущая страница":
-      show.status = "many";
       await user.updateWith(user.shiftIndex(ctx, 1), user.sendPage);
       break;
     case "⬅ Назад":
-      if (show.status === "many")
+      if (cache.status === "many")
       {
-        show.status = undefined;
+        cache.status = undefined;
         await ctx.user.goMain(ctx);
       } else {
-        show.status = "many";  
         await user.updateWith(ctx, user.sendPage);
       }
       break;
     default:
-      show.responsedMessageCounter++;
+      cache.responsedMessageCounter++;
     }
   }
 })();

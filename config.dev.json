@@ -1,0 +1,8 @@
+{
+  "token": "1165770908:AAE0EUIto0BnCFdsD1u5tOgvWF5-HuF-HPM",
+  "dbName": "april-dev",
+  "mongo": [
+    "mongodb+srv://Ratedesign:4VA5zE82oKR9CUYb@ratedesign1.jvcok.azure.mongodb.net/RateDesign_data",
+    { "useUnifiedTopology": true, "fsync": true }
+  ]
+}
