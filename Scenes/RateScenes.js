@@ -327,6 +327,7 @@ new class RateScene extends Scene {
     
     if ((index = ["1⃣", "2⃣", "3⃣", "4⃣"].indexOf(ctx.message.text)) != -1) {
       cache.indexWork = index;
+      cache.array = ctx.session.works;
       if (!cache.array[cache.indexWork]) {
         await ctx.reply("Работы с таким номером не существует, попробуйте ещё раз.");
         await user.checkDos(ctx, user.deleteLastNMessage);

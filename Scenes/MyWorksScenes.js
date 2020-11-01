@@ -28,7 +28,7 @@ new class MyWorksScene extends Scene {
     
     if ((index = ["1⃣", "2⃣", "3⃣", "4⃣"].indexOf(ctx.message.text)) != -1) {
       cache.indexWork = index;
-      [cache.array, ctx.session.works] = [ctx.session.works, cache.array];
+      cache.array = ctx.session.works;
       if (!cache.array[cache.indexWork]) {
         await ctx.reply("Работы с таким номером не существует, попробуйте заново.");
         await user.checkDos(ctx, user.deleteLastNMessage);
@@ -36,7 +36,6 @@ new class MyWorksScene extends Scene {
       } else {
         await user.updateWith(ctx, user.sendWork);
       }
-      [cache.array, ctx.session.works] = [ctx.session.works, cache.array];
       return;
     }
     
