@@ -18,20 +18,28 @@ async function findCommentStatus(ctx, userId, postId)
   return comment !== undefined;
 }
 
+function makeStepOf(i, array) {
+  return "(" + (i+1) + "/" + array.length + ") " + array[i];
+}
+
+function clearStep(str) {
+  return str.replace(str.match(/\(\d\/\d\)\s/)[0], "");
+}
+
 let typesMark = [
   [""],
   [
-    "Оцените UX(юзабилити) (1/5)",
-    "Оцените UI (2/5)",
-    "Оцените типографику (3/5)",
-    "Оцените реализацию стиля и композицию (4/5)",
-    "Оцените контент/графику (5/5)"],
+    "Оцените UX(юзабилити): ",
+    "Оцените UI: ",
+    "Оцените типографику: ",
+    "Оцените реализацию стиля и композицию: ",
+    "Оцените контент/графику: "],
   [
-    "Оцените реализацию стиля (1/5)",
-    "Оцените композицию (2/5)",
-    "Оцените типографику (3/5)",
-    "Оцените цветовые решения (4/5)",
-    "Оцените считываемость(5/5)"
+    "Оцените реализацию стиля: ",
+    "Оцените композицию: ",
+    "Оцените типографику: ",
+    "Оцените цветовые решения: ",
+    "Оцените считываемость: "
   ]
 ];
 
@@ -71,7 +79,7 @@ function inlineReport(cache, postId) {
 }
 
 function inlineComment(cache, postId) {
-  return [];
+  return [[Markup.callbackButton("⬅ Назад", "commentback")]];
 }
 
 async function showToRate(ctx) {
@@ -99,6 +107,7 @@ new class RateScene extends Scene {
     super.struct = {
       enter: [[this.enter]],
       action: [
+        [/commentback/, this.goCommentBack],
         [/gorate/, this.goRate],
         [/gocoment/, this.goComment],
         [/rateback/, this.goRateBack],
@@ -159,11 +168,13 @@ new class RateScene extends Scene {
   async ratePost(ctx) {
     const cache = ctx.session.cache,
       postId = ctx.match[2],
-      rate = ctx.match[1];
+      rate = ctx.match[1],
+      work = cache.array[cache.indexWork];
     cache.rates.push(rate);
-    cache.strings[cache.strings.length - 1] += " " + rate;
-    if (cache.rates.length < typesMark[cache.array[cache.indexWork].type].length) {
-      cache.strings.push(typesMark[cache.array[cache.indexWork].type][cache.rates.length])
+    cache.strings[cache.strings.length - 1] = 
+      clearStep(cache.strings[cache.strings.length - 1] += " " + rate);
+    if (cache.rates.length < typesMark[work.type].length) {
+      cache.strings.push(makeStepOf(cache.rates.length, typesMark[work.type]));
       await ctx.editMessageText(cache.strings.join("\n"));
       await ctx.editMessageReplyMarkup({
         inline_keyboard: ctx.session.inlineKeyboard.now(cache, postId)
@@ -213,12 +224,14 @@ new class RateScene extends Scene {
   }
 
   async goRate(ctx) {
-    let cache = ctx.session.cache;
-    let postId = cache.array[cache.indexWork]._id;
-    if (cache.array[cache.indexWork].type === undefined) cache.array[cache.indexWork] = await ctx.base.getPost(cache.array[cache.indexWork]._id);
+    let cache = ctx.session.cache,
+      work = cache.array[cache.indexWork],
+      postId = work._id;
+    if (work.type === undefined) work = cache.array[cache.indexWork] = await ctx.base.getPost(work._id);
     cache.rates = [];
     cache.strings = [cache.strings[0]];
-    cache.strings.push(typesMark[cache.array[cache.indexWork].type][0]);
+    if (cache.strings[0] === "Работу ещё никто не оценил, станьте первым!") cache.strings[0] = "";
+    cache.strings.push(makeStepOf(0, typesMark[work.type]));
     await ctx.editMessageText(cache.strings.join("\n"));
     await ctx.editMessageReplyMarkup({
       inline_keyboard: ctx.session.inlineKeyboard.go("Rate").now(cache, postId)
@@ -226,12 +239,13 @@ new class RateScene extends Scene {
     await ctx.answerCbQuery("Можно приступить к оценке");
   }
   async goRateBack(ctx) {
-    let cache = ctx.session.cache;
-    let postId = cache.array[cache.indexWork]._id;
+    let cache = ctx.session.cache,
+      work = cache.array[cache.indexWork],
+      postId = work._id;
     if (cache.rates.length > 0) {
       cache.rates.pop();
       cache.strings.pop();
-      cache.strings[cache.strings.length - 1] = (typesMark[cache.array[cache.indexWork].type][cache.rates.length]);
+      cache.strings[cache.strings.length - 1] = makeStepOf(cache.rates.length, typesMark[work.type]);
       await ctx.editMessageText(cache.strings.join("\n"));
       await ctx.editMessageReplyMarkup({
         inline_keyboard: ctx.session.inlineKeyboard.now(cache, postId)
@@ -239,6 +253,7 @@ new class RateScene extends Scene {
     } else {
       cache.rates = [];
       cache.strings = [cache.strings[0]];
+      if (cache.strings[0] === "") cache.strings[0] = "Работу ещё никто не оценил, станьте первым!";
       await ctx.editMessageText(cache.strings.join("\n"));
       await ctx.editMessageReplyMarkup({
         inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
@@ -248,17 +263,34 @@ new class RateScene extends Scene {
   }
 
   async goComment(ctx) {
-    let cache = ctx.session.cache;
-    let postId = cache.array[cache.indexWork]._id;
+    let cache = ctx.session.cache,
+      work = cache.array[cache.indexWork],
+      postId = work._id;
     cache.need_comment = true;
     cache.ctx = ctx;
     cache.responsedMessageCounter += 1;
-    await ctx.editMessageText("Теперь отправьте свой комментарий!");
+    let text = (cache.comented_status)?
+      "Ваш комментарий:\n" +
+      (await ctx.base.getComment(postId, ctx.from.id)).text + 
+      "\n\nТеперь отправьте новый комментарий:":
+      "Теперь отправьте свой комментарий:";
+    await ctx.editMessageText(text);
     await ctx.editMessageReplyMarkup({
       inline_keyboard: ctx.session.inlineKeyboard.go("Comment").now(cache, postId)
     }).catch(()=>{}); // если не нечего менять, оно выкенет ошибку
   }
   
+  async goCommentBack(ctx) {
+    let cache = ctx.session.cache,
+      postId = ctx.match[1];
+    delete cache.need_comment;
+    await ctx.editMessageText(cache.strings.join("\n"));
+    await ctx.editMessageReplyMarkup({
+      inline_keyboard: ctx.session.inlineKeyboard.goBack().now(ctx.session.cache, postId)
+    });
+    await ctx.answerCbQuery("Назад");
+  }
+
   async nop(ctx) {
     await ctx.answerCbQuery("Ничего не могу сделать");
   }
@@ -287,10 +319,10 @@ new class RateScene extends Scene {
         await cache.ctx.editMessageReplyMarkup({
           inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
         }).catch(()=>{}); // если не нечего менять, оно выкенет ошибку
-        await cache.ctx.answerCbQuery("Комментарий отправлен");
+        await cache.ctx.answerCbQuery("Комментарий отправлен").catch(()=>{});
         return;
       }
-      await cache.ctx.answerCbQuery("Комментарий отправлен");
+      await cache.ctx.answerCbQuery("").catch(()=>{});
     }
     
     if ((index = ["1⃣", "2⃣", "3⃣", "4⃣"].indexOf(ctx.message.text)) != -1) {
