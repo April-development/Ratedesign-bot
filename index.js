@@ -1,6 +1,6 @@
 const { token, dbName, mongo } = require(process.env.BOT_CONFIG);
 
-const { Telegraf, Markup, session, once } = require("./Scenes");
+const { Telegraf, Markup, session } = require("./Scenes");
 
 // Роутер бота
 const bot = new Telegraf(token);
@@ -21,6 +21,7 @@ user.main = async (ctx) => {
     ]).resize().extra()
   );
   ctx.session.caption = [chat.id, message_id];
+  ctx.session.cache = undefined;
 };
 
 // Устанавливаем обработчики
@@ -78,8 +79,7 @@ bot.on("text", async (ctx) => {
 });
 
 global.Controller.once("Launch", async () => {
-  global.Controller.emit("DataBaseConnect", dbName, mongo);
-  await once(global.Controller, "DataBaseConnected");
+  await global.DataBaseController.connect(dbName, mongo);
   await bot.launch();
   
   //console.log(await global.DataBaseController.remove("Post"));    //---------+

@@ -1,5 +1,6 @@
 const Wrapper = require("./Wrapper");
 const {Markup} = require("telegraf");
+const {Mutex} = require("async-mutex");
 
 class User extends Wrapper {
   constructor() {
@@ -13,12 +14,18 @@ class User extends Wrapper {
   }
   //  Расширение контекста объектом данного класса
   middleware() {
-    return (ctx, next) => {
+    return async (ctx, next) => {
       //  Рашсирение контекста
       ctx.user = this;
       //  Антиспам пользователей, который ебашит пермач до
       //  тех пор, пока все запросы не обработаются
-      if (this.users[ctx.from.id] === undefined) next();
+      ctx.session.mutex = ctx.session.mutex || new Mutex;
+      const release = await ctx.session.mutex.acquire(); // Делаем всё последовательно
+      try {
+        await next();
+      } finally {
+        release();
+      }
     };
   }
   //  Типиизрует токены фотографий для кормления api телеги
@@ -117,8 +124,7 @@ class User extends Wrapper {
   indexed(ctx, array) { // TODO: Сделать chache отдельным классом сделать оптимизации, скрыть детали реализации
     let cache = ctx.session.cache,
       perPage = 4; // количество на странице
-    cache.index = ((array.length + perPage - 1) / perPage) | 0;
-    cache.size = ((array.length + perPage - 1) / perPage) | 0;
+    cache.size = cache.index = ((array.length + perPage - 1) / perPage) | 0;
     cache.array = array;
     cache.perPage = perPage;
     cache.status = "many";

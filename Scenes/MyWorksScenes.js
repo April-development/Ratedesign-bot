@@ -1,6 +1,6 @@
 const { Scene } = require("./Scenes");
 
-new (class MyWorksScene extends Scene {
+new class MyWorksScene extends Scene {
   constructor() {
     super("MyWorks");
     super.struct = {
@@ -34,7 +34,6 @@ new (class MyWorksScene extends Scene {
         await user.checkDos(ctx, user.deleteLastNMessage);
         cache.responsedMessageCounter += 2;
       } else {
-        cache.status = "one";
         await user.updateWith(ctx, user.sendWork);
       }
       [cache.array, ctx.session.works] = [ctx.session.works, cache.array];
@@ -61,4 +60,4 @@ new (class MyWorksScene extends Scene {
       cache.responsedMessageCounter++;
     }
   }
-})();
+};

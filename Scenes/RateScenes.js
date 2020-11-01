@@ -12,6 +12,28 @@ async function findReportStatus(ctx, userId, postId)
   let user = await ctx.base.getUser(userId);
   return user.reports && user.reports.indexOf(postId) != -1;
 }
+async function findCommentStatus(ctx, userId, postId)
+{
+  let comment = await ctx.base.getComment(postId, userId);
+  return comment !== undefined;
+}
+
+let typesMark = [
+  [""],
+  [
+    "Оцените UX(юзабилити) (1/5)",
+    "Оцените UI (2/5)",
+    "Оцените типографику (3/5)",
+    "Оцените реализацию стиля и композицию (4/5)",
+    "Оцените контент/графику (5/5)"],
+  [
+    "Оцените реализацию стиля (1/5)",
+    "Оцените композицию (2/5)",
+    "Оцените типографику (3/5)",
+    "Оцените цветовые решения (4/5)",
+    "Оцените считываемость(5/5)"
+  ]
+];
 
 function inlineRate(cache, postId) {
   return [
@@ -23,6 +45,14 @@ function inlineRate(cache, postId) {
         String(i + 1) + "-" + postId
       )
     ),
+    [Markup.callbackButton("⬅ Назад", "rateback")],
+  ];
+}
+
+function inlineMain(cache, postId) {
+  return [
+    [Markup.callbackButton("Оценить работу", "gorate")],
+    [Markup.callbackButton((cache.comented_status) ? "Изменить комментарий" : "Прокомментировать", "gocoment")],
     [Markup.callbackButton((cache.saved_status) ? "🤘 Сохранено": "📎 Сохранить работу", "save-" + postId)],
     [Markup.callbackButton(...(cache.report_status) ? ["✅ Жалоба отправлена","nop"]: ["🚫 Пожаловаться", "report-" + postId])],
   ];
@@ -40,28 +70,38 @@ function inlineReport(cache, postId) {
   return board;
 }
 
+function inlineComment(cache, postId) {
+  return [];
+}
+
 async function showToRate(ctx) {
   const user = ctx.user,
     cache = ctx.session.cache,
     postId = cache.array[cache.indexWork]._id,
     rate = await ctx.base.getRate(postId);
+  // TODO: Подгрузка оценок пользователя
+  cache.strings = [(rate ? "Средняя оценка работы: " + rate.toFixed(2) + "\nОцените работу:" : "Работу ещё никто не оценил, станьте первым!")];
+  cache.rates = [];
   cache.responsedMessageCounter = await user.sendWork(ctx);
   await ctx.reply(
-    (rate ? "Средняя оценка работы: " + rate.toFixed(2) + "\nОцените работу:" : "Работу ещё никто не оценил, станьте первым!"),
+    cache.strings.join("\n"),
     Extra.HTML().markup((m) =>
-      m.inlineKeyboard(inlineRate(cache, postId))
+      m.inlineKeyboard(inlineMain(cache, postId))
     )
   );
-  cache.responsedMessageCounter++;
+  cache.responsedMessageCounter += 1;
   return cache.responsedMessageCounter;
 }
 
-new (class RateScene extends Scene {
+new class RateScene extends Scene {
   constructor() {
     super("Rate");
     super.struct = {
       enter: [[this.enter]],
       action: [
+        [/gorate/, this.goRate],
+        [/gocoment/, this.goComment],
+        [/rateback/, this.goRateBack],
         [/([1-5])-([\w\D]*)/, this.ratePost],
         [/save-([\w\D]*)/, this.savePost],
         [/([1-3])report-([\w\D]*)/, this.reportPost],
@@ -90,12 +130,15 @@ new (class RateScene extends Scene {
     cache.saved_status = undefined;
     cache.rated_status = undefined;
     cache.report_status = undefined;
+    cache.comented_status = undefined;
     
     ctx.session.inlineKeyboard = new InlineController;
     ctx.session.inlineKeyboard.stage({
       Report: inlineReport,
       Rate: inlineRate,
-    }).go("Rate");
+      Main: inlineMain,
+      Comment: inlineComment,
+    }).go("Main");
   }
 
   async savePost(ctx) {
@@ -107,7 +150,7 @@ new (class RateScene extends Scene {
     } 
     cache.saved_status = true;
     await ctx.editMessageReplyMarkup({
-      inline_keyboard: inlineRate(cache, postId)
+      inline_keyboard: ctx.session.inlineKeyboard.now(ctx.session.cache, postId)
     }).catch(()=>{});
     await ctx.base.savePost(ctx.chat.id, postId);
     await ctx.answerCbQuery("Сохранено");
@@ -117,16 +160,22 @@ new (class RateScene extends Scene {
     const cache = ctx.session.cache,
       postId = ctx.match[2],
       rate = ctx.match[1];
-    if (cache.rated_status == +rate) {
-      await ctx.answerCbQuery("Вы уже поставили " + rate);
-      return;    
-    } 
-    cache.rated_status = +rate;
-    await ctx.editMessageReplyMarkup({
-      inline_keyboard: inlineRate(cache, postId)
-    }).catch(()=>{});
-    await ctx.base.putRate(ctx.from.id, postId, rate);
-    await ctx.base.seenPost(ctx.from.id, postId);
+    cache.rates.push(rate);
+    cache.strings[cache.strings.length - 1] += " " + rate;
+    if (cache.rates.length < typesMark[cache.array[cache.indexWork].type].length) {
+      cache.strings.push(typesMark[cache.array[cache.indexWork].type][cache.rates.length])
+      await ctx.editMessageText(cache.strings.join("\n"));
+      await ctx.editMessageReplyMarkup({
+        inline_keyboard: ctx.session.inlineKeyboard.now(cache, postId)
+      }).catch(()=>{});
+    } else {
+      await ctx.editMessageText(cache.strings.join("\n"));
+      await ctx.editMessageReplyMarkup({
+        inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
+      }).catch(()=>{});
+      await ctx.base.putRate(ctx.from.id, postId, cache.rates);
+      await ctx.base.seenPost(ctx.from.id, postId);
+    }
     await ctx.answerCbQuery("Вы поставили " + rate);
   }
 
@@ -162,6 +211,53 @@ new (class RateScene extends Scene {
     });
     await ctx.answerCbQuery("Назад");
   }
+
+  async goRate(ctx) {
+    let cache = ctx.session.cache;
+    let postId = cache.array[cache.indexWork]._id;
+    if (cache.array[cache.indexWork].type === undefined) cache.array[cache.indexWork] = await ctx.base.getPost(cache.array[cache.indexWork]._id);
+    cache.rates = [];
+    cache.strings = [cache.strings[0]];
+    cache.strings.push(typesMark[cache.array[cache.indexWork].type][0]);
+    await ctx.editMessageText(cache.strings.join("\n"));
+    await ctx.editMessageReplyMarkup({
+      inline_keyboard: ctx.session.inlineKeyboard.go("Rate").now(cache, postId)
+    }).catch(()=>{});
+    await ctx.answerCbQuery("Можно приступить к оценке");
+  }
+  async goRateBack(ctx) {
+    let cache = ctx.session.cache;
+    let postId = cache.array[cache.indexWork]._id;
+    if (cache.rates.length > 0) {
+      cache.rates.pop();
+      cache.strings.pop();
+      cache.strings[cache.strings.length - 1] = (typesMark[cache.array[cache.indexWork].type][cache.rates.length]);
+      await ctx.editMessageText(cache.strings.join("\n"));
+      await ctx.editMessageReplyMarkup({
+        inline_keyboard: ctx.session.inlineKeyboard.now(cache, postId)
+      }).catch(()=>{});
+    } else {
+      cache.rates = [];
+      cache.strings = [cache.strings[0]];
+      await ctx.editMessageText(cache.strings.join("\n"));
+      await ctx.editMessageReplyMarkup({
+        inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
+      }).catch(()=>{});
+    }
+    await ctx.answerCbQuery("");
+  }
+
+  async goComment(ctx) {
+    let cache = ctx.session.cache;
+    let postId = cache.array[cache.indexWork]._id;
+    cache.need_comment = true;
+    cache.ctx = ctx;
+    cache.responsedMessageCounter += 1;
+    await ctx.editMessageText("Теперь отправьте свой комментарий!");
+    await ctx.editMessageReplyMarkup({
+      inline_keyboard: ctx.session.inlineKeyboard.go("Comment").now(cache, postId)
+    }).catch(()=>{}); // если не нечего менять, оно выкенет ошибку
+  }
   
   async nop(ctx) {
     await ctx.answerCbQuery("Ничего не могу сделать");
@@ -172,9 +268,33 @@ new (class RateScene extends Scene {
       cache = ctx.session.cache;
     let index = -1;
     
+    if (cache.need_comment) {
+      delete cache.need_comment;
+      if (ctx.message.text != "⬅ Назад в ленту") {
+        let postId = cache.array[cache.indexWork]._id;
+        let comment = { 
+          text: ctx.message.text, 
+          userId: ctx.from.id, 
+          postId: postId,
+        };
+        await ctx.deleteMessage();
+        if (cache.comented_status) 
+          await ctx.base.putComment(comment.postId, comment.userId, comment);
+        else
+          await ctx.base.setComment(comment);
+        cache.comented_status = true;
+        await cache.ctx.editMessageText(cache.strings.join("\n"));
+        await cache.ctx.editMessageReplyMarkup({
+          inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
+        }).catch(()=>{}); // если не нечего менять, оно выкенет ошибку
+        await cache.ctx.answerCbQuery("Комментарий отправлен");
+        return;
+      }
+      await cache.ctx.answerCbQuery("Комментарий отправлен");
+    }
+    
     if ((index = ["1⃣", "2⃣", "3⃣", "4⃣"].indexOf(ctx.message.text)) != -1) {
       cache.indexWork = index;
-      [cache.array, ctx.session.works] = [ctx.session.works, cache.array];
       if (!cache.array[cache.indexWork]) {
         await ctx.reply("Работы с таким номером не существует, попробуйте ещё раз.");
         await user.checkDos(ctx, user.deleteLastNMessage);
@@ -184,10 +304,9 @@ new (class RateScene extends Scene {
         cache.saved_status = await findSavedStatus(ctx, ctx.from.id, postId);
         cache.report_status = await findReportStatus(ctx, ctx.from.id, postId);
         cache.rated_status = undefined;
-        cache.status = "one";
+        cache.comented_status = await findCommentStatus(ctx, ctx.from.id, postId);
         await user.updateWith(ctx, showToRate);
       }
-      [cache.array, ctx.session.works] = [ctx.session.works, cache.array];
       return;
     }
 
@@ -201,28 +320,20 @@ new (class RateScene extends Scene {
     case "⬅ Назад":
       switch (cache.status) {
       case "many":
-        cache.status = undefined;
-        cache.keyboard = undefined;
         ctx.session.inlineKeyboard = undefined;
         await ctx.base.putUser(ctx.from.id, { page: cache.index });
         await ctx.user.goMain(ctx);  
         break;
       case "one":
-        cache.saved_status = undefined;
-        cache.rated_status = undefined;
-        cache.report_status = undefined;
         await user.updateWith(ctx, user.sendWorksGroup);
         break;
       }
       break;
     case "⬅ Назад в ленту":
-      cache.saved_status = undefined;
-      cache.rated_status = undefined;
-      cache.report_status = undefined;
       await user.updateWith(ctx, user.sendWorksGroup);
       break;
     default:
       cache.responsedMessageCounter++;
     }
   }
-})();
+};

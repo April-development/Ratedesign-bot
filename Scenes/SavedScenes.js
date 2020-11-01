@@ -1,7 +1,7 @@
 const { Scene } = require("./Scenes");
 
 
-new (class SavedScene extends Scene {
+new class SavedScene extends Scene {
   constructor() {
     super("Saved");
     super.struct = {
@@ -32,16 +32,13 @@ new (class SavedScene extends Scene {
     
     if ((index = ["1⃣", "2⃣", "3⃣", "4⃣"].indexOf(ctx.message.text)) != -1) {
       cache.indexWork = index;
-      [cache.array, ctx.session.works] = [ctx.session.works, cache.array];
       if (!cache.array[cache.indexWork]) {
         await ctx.reply("Работы с таким номером не существует, попробуйте заново.");
         await user.checkDos(ctx, user.deleteLastNMessage);
         cache.responsedMessageCounter += 2;
       } else {
-        cache.status = "one";
         await user.updateWith(ctx, user.sendWork);
       }
-      [cache.array, ctx.session.works] = [ctx.session.works, cache.array];
       return;
     }
     
@@ -53,16 +50,17 @@ new (class SavedScene extends Scene {
       await user.updateWith(user.shiftIndex(ctx, 1), user.sendPage);
       break;
     case "⬅ Назад":
-      if (cache.status === "many")
-      {
-        cache.status = undefined;
-        await ctx.user.goMain(ctx);
-      } else {
+      switch (cache.status) {
+      case "many":
+        await user.goMain(ctx);
+        break;
+      case "one":    
         await user.updateWith(ctx, user.sendPage);
+        break;
       }
       break;
     default:
       cache.responsedMessageCounter++;
     }
   }
-})();
+};

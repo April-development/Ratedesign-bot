@@ -11,7 +11,7 @@ async function sendWork(ctx) {
   await ctx.scene.enter("SendWorkAgain");
 }
 
-new (class SendWorkAgainScene extends Scene {
+new class SendWorkAgainScene extends Scene {
   constructor() {
     super("SendWorkAgain");
     super.struct = {
@@ -27,9 +27,9 @@ new (class SendWorkAgainScene extends Scene {
       await ctx.user.goMain(ctx);
     }
   }
-})();
+};
 
-new (class SendWorkScene extends Scene {
+new class SendWorkScene extends Scene {
   constructor() {
     super("SendWork");
     super.struct = {
@@ -44,9 +44,9 @@ new (class SendWorkScene extends Scene {
     ctx.session.caption = [chat.id, message_id];
     await ctx.scene.enter("SendWorkInit");
   }
-})();
+};
 
-new (class SendWorkInitScene extends Scene {
+new class SendWorkInitScene extends Scene {
   constructor() {
     super("SendWorkInit");
     super.struct = {
@@ -65,6 +65,7 @@ new (class SendWorkInitScene extends Scene {
       photos: [], // массив ссылок на фотографии
       time: 0, // время создания
       rates: {},
+      type: 0, // вид работы
     };
   }
 
@@ -83,7 +84,7 @@ new (class SendWorkInitScene extends Scene {
     case "✅ Готово":
       //  Если есть фото и их можно вместить в альбом
       if (work.photos.length > 0 && work.photos.length < 10) {
-        await ctx.scene.enter("DescriptionQuestion");
+        await ctx.scene.enter("TypedWork");
       } else {
         ctx.reply(((work.photos.length > 0)?
           "Вы отправили слишком много фотографий.\nВозможно прикрепить до 10 фотографий!"
@@ -96,9 +97,30 @@ new (class SendWorkInitScene extends Scene {
       await ctx.user.goMain(ctx);
     }
   }
-})();
+};
 
-new (class DescriptionQuestionScene extends Scene {
+let typeArray = ["UX/UI дизайн", "Графический дизайн"];
+new class TypedWorkScene extends Scene {
+  constructor() {
+    super("TypedWork");
+    super.struct = {
+      enter: [[this.enter]],
+      on: [["text", this.typed]],
+    };
+  }
+  async enter(ctx) {
+    await ctx.reply("Выберите область, к которой принадлежит работа", Markup.keyboard(typeArray).resize().extra());
+  }
+  async typed(ctx) {
+    let typeIndex = typeArray.indexOf(ctx.message.text) + 1;
+    if (typeIndex) {
+      ctx.session.work.type = typeIndex;
+      await ctx.scene.enter("DescriptionQuestion");
+    }
+  }
+};
+
+new class DescriptionQuestionScene extends Scene {
   constructor() {
     super("DescriptionQuestion");
     super.struct = {
@@ -127,9 +149,9 @@ new (class DescriptionQuestionScene extends Scene {
       break;
     }
   }
-})();
+};
 
-new (class EnterDescriptionScene extends Scene {
+new class EnterDescriptionScene extends Scene {
   constructor() {
     super("EnterDescription");
     super.struct = {
@@ -152,4 +174,4 @@ new (class EnterDescriptionScene extends Scene {
       await ctx.scene.enter("SendWorkAgain");
     }
   }
-})();
+};

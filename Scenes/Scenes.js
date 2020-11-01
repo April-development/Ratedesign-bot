@@ -36,7 +36,7 @@ const Telegraf = require("telegraf");
 const { Stage, session, Markup, Extra } = Telegraf;
 const SceneBase = require("telegraf/scenes/base");
 
-// Если нам понадобиться разбыть сцены по группам
+// Если нам понадобиться разбить сцены по группам
 class Scenes {
   constructor() {
     this.scenesMap = new Map();

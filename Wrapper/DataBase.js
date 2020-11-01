@@ -1,4 +1,5 @@
 const { ObjectID } = require("mongodb");
+const { once } = require("events");
 
 function uniq(a) {
   let prims = new Map(),
@@ -22,9 +23,8 @@ class DataBase {
   constructor() {
     global.DataBaseController = this;
     this.mongodb = require("mongodb");
-    global.Controller.once("DataBaseConnect", this.connect);
   }
-  connect(name, config) {
+  async connect(name, config) {
     global.DataBaseController.mongodb
       .MongoClient(...config)
       .connect((err, client) => {
@@ -35,14 +35,15 @@ class DataBase {
         global.DataBase = client.db(name);
         global.Controller.emit("DataBaseConnected");
       });
+    await once(global.Controller, "DataBaseConnected");
   }
   static get() {
     return new DataBase();
   }
   middleware() {
-    return (ctx, next) => {
+    return async (ctx, next) => {
       ctx.base = this;
-      next();
+      await next();
     };
   }
   async set(name, note) {
@@ -54,7 +55,7 @@ class DataBase {
       global.Controller.emit("Error", e);
     }
   }
-  async get(name, details) {
+  async get(name, details) { // TODO: Добавить возможность выбора определённых полей
     const collection = global.DataBase.collection(name);
     try {
       const resp = await collection.find(details).toArray();
@@ -86,7 +87,7 @@ class DataBase {
     return (await global.DataBaseController.get("User", { _id: userId }))[0];
   }
   async setUser(user) {
-    console.log("putUser: ", user);
+    console.log("setUser: ", user);
     return await global.DataBaseController.set("User", user);
   }
   async putUser(userId, user) {
@@ -95,6 +96,23 @@ class DataBase {
       "User",
       { _id: userId },
       user
+    );
+  }
+  async getComment(postId, userId) {
+    console.log("getComment: ", postId, userId);
+    return (await global.DataBaseController.get("Comment", { _id: userId + "+" + postId }))[0];
+  }
+  async setComment(comment) {
+    comment._id = comment.userId + "+" + comment.postId;
+    console.log("setComment: ", comment);
+    return await global.DataBaseController.set("Comment", comment);
+  }
+  async putComment(postId, userId, comment) {
+    console.log("putComment: ", postId, userId, comment);
+    return await global.DataBaseController.update(
+      "Comment",
+      { _id: userId + "+" + postId },
+      comment
     );
   }
   async putPost(postId, post) {
@@ -164,7 +182,7 @@ class DataBase {
   {
     console.log("countRate: ", post);
     post.rates = post.rates || {};
-    return average(Object.values(post.rates));
+    return average([].concat(...Object.values(post.rates)));
   }
   async getRate(postId)
   {
