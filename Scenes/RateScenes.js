@@ -42,6 +42,7 @@ let typesMark = [
     "Оцените считываемость: "
   ]
 ];
+let numEmoji = ["0⃣", "1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣"];
 
 function inlineRate(cache, postId) {
   return [
@@ -172,7 +173,7 @@ new class RateScene extends Scene {
       work = cache.array[cache.indexWork];
     cache.rates.push(rate);
     cache.strings[cache.strings.length - 1] = 
-      clearStep(cache.strings[cache.strings.length - 1] += " " + rate);
+      clearStep(cache.strings[cache.strings.length - 1] += " " + numEmoji[+rate]);
     if (cache.rates.length < typesMark[work.type].length) {
       cache.strings.push(makeStepOf(cache.rates.length, typesMark[work.type]));
       await ctx.editMessageText(cache.strings.join("\n"));
