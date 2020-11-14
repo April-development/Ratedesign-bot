@@ -110,6 +110,7 @@ new class RateScene extends Scene {
     ctx.session.caption = [chat.id, message_id];
       
     const user = await ctx.base.getUser(ctx.from.id);
+    console.log(user);
     let cache = (ctx.session.cache = { 
       index: user.page,
       perPage: 4,
@@ -278,7 +279,7 @@ new class RateScene extends Scene {
   }
 
   async nop(ctx) {
-    await ctx.answerCbQuery("Ничего не могу сделать");
+    await ctx.answerCbQuery("А всё уже, всё");
   }
 
   async main(ctx) {
@@ -294,7 +295,7 @@ new class RateScene extends Scene {
           text: ctx.message.text, 
           userId: ctx.from.id, 
           postId: postId,
-          username: ctx.from.username || ctx.from.first_name,
+          username: "@" + ctx.from.username || ctx.from.first_name,
         };
         await ctx.deleteMessage();
         if (cache.comented_status) 

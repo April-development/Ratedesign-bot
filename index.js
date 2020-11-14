@@ -40,12 +40,6 @@ global.adminsIds = [711071113, 430830139, 367750507, 742576159, 949690401];
 // Доступные на главной команды
 bot.start(user.main);
 bot.on("text", async (ctx) => {
-  async function update(id) {
-    let userInfo = (await (ctx.telegram.getChatMember)(id, id)).user;
-    return await (global.DataBaseController.putUser)(id, {user: userInfo});
-  }
-  update(ctx.from.id);
-  
   if (!ctx.session.caption) await user.main(ctx);
   if (!ctx.session.inited && !(await ctx.base.getUser(ctx.from.id)))
     await ctx.base.setUser({
@@ -59,6 +53,12 @@ bot.on("text", async (ctx) => {
     });
   ctx.session.inited = true;
   
+  async function update(id) {
+    let userInfo = (await (ctx.telegram.getChatMember)(id, id)).user;
+    return await (global.DataBaseController.putUser)(id, {user: userInfo});
+  }
+  await update(ctx.from.id);
+
   // Весьма прозаично :)
   if (await require("./Dima.js").canDoThis(ctx)) return;
 

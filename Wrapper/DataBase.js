@@ -16,7 +16,7 @@ function uniq(a) {
 
 function average(nums) {
   if (nums.length === 0) return [];
-  return (nums.reduce((a, b) => a.map((v, i) => +v + +b[i]))).map((v => v / nums.length), Array(nums[0].length).fill(0));
+  return nums.reduce((a, b) => a.map((v, i) => +v + +b[i]), Array(nums[0].length).fill(0)).map((v => v / nums.length));
 }
 
 class DataBase {
@@ -210,7 +210,7 @@ class DataBase {
   }
   async putReport(postId, userId, reportId) // TODO: Оптимизировать
   {
-    console.log("putReport: ", postId, userId, reportId);
+    console.log("putReport: ", postId, userId, --reportId);
     let post = await global.DataBaseController.getPost(postId),
       user = await global.DataBaseController.getUser(userId);
     // user check
@@ -223,8 +223,6 @@ class DataBase {
     if (post.reports === undefined) post.reports = [0, 0, 0];
     if (reportId < post.reports.length)
       post.reports[reportId]++;
-    else
-      throw "DataBase: putReport: invalid report id";
     await global.DataBaseController.putPost(postId, {reports: post.reports});
   }
 }

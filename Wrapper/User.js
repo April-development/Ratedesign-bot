@@ -176,7 +176,7 @@ class User extends Wrapper {
         cache.responsedMessageCounter += 1;
         for (let comment of comments) {
           cache.responsedMessageCounter += 1;
-          await ctx.replyWithMarkdown("Пользователь " + (comment.username || "*скрыл свой ник*") + `\n\n"${comment.text}"`);
+          await ctx.reply("Пользователь " + (comment.username || "скрыл свой ник") + `\n\n"${comment.text}"`);
         }
       }
     }
