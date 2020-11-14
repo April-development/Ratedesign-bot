@@ -15,8 +15,8 @@ function uniq(a) {
 }
 
 function average(nums) {
-  if (nums.length === 0) return 0.0;
-  return nums.reduce((a, b) => (+a + +b)) / nums.length;
+  if (nums.length === 0) return [];
+  return (nums.reduce((a, b) => a.map((v, i) => +v + +b[i]))).map((v => v / nums.length), Array(nums[0].length).fill(0));
 }
 
 class DataBase {
@@ -102,6 +102,10 @@ class DataBase {
     console.log("getComment: ", postId, userId);
     return (await global.DataBaseController.get("Comment", { _id: userId + "+" + postId }))[0];
   }
+  async searchComments(q) {
+    console.log("searchComments: ", q);
+    return (await global.DataBaseController.get("Comment", q));
+  }
   async setComment(comment) {
     comment._id = comment.userId + "+" + comment.postId;
     console.log("setComment: ", comment);
@@ -182,7 +186,12 @@ class DataBase {
   {
     console.log("countRate: ", post);
     post.rates = post.rates || {};
-    return average([].concat(...Object.values(post.rates)));
+    let values = Object.values(post.rates),
+      rate = average(values);
+    rate.avg = rate.reduce((a, b) => a + b, 0) / rate.length;
+    rate.type = post.type;
+    rate.count = values.length;
+    return rate;
   }
   async getRate(postId)
   {

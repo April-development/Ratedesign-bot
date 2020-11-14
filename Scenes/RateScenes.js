@@ -26,24 +26,6 @@ function clearStep(str) {
   return str.replace(str.match(/\(\d\/\d\)\s/)[0], "");
 }
 
-let typesMark = [
-  [""],
-  [
-    "Оцените UX(юзабилити): ",
-    "Оцените UI: ",
-    "Оцените типографику: ",
-    "Оцените реализацию стиля и композицию: ",
-    "Оцените контент/графику: "],
-  [
-    "Оцените реализацию стиля: ",
-    "Оцените композицию: ",
-    "Оцените типографику: ",
-    "Оцените цветовые решения: ",
-    "Оцените считываемость: "
-  ]
-];
-let numEmoji = ["0⃣", "1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣"];
-
 function inlineRate(cache, postId) {
   return [
     [...Array(5).keys()].map((i) =>
@@ -60,8 +42,8 @@ function inlineRate(cache, postId) {
 
 function inlineMain(cache, postId) {
   return [
-    [Markup.callbackButton("Оценить работу", "gorate")],
-    [Markup.callbackButton((cache.comented_status) ? "Изменить комментарий" : "Прокомментировать", "gocoment")],
+    [Markup.callbackButton((cache.rated_status) ? "Изменить оценку": "Оценить работу", "gorate")],
+    [Markup.callbackButton((cache.comented_status) ? "Изменить комментарий": "Прокомментировать", "gocoment")],
     [Markup.callbackButton((cache.saved_status) ? "🤘 Сохранено": "📎 Сохранить работу", "save-" + postId)],
     [Markup.callbackButton(...(cache.report_status) ? ["✅ Жалоба отправлена","nop"]: ["🚫 Пожаловаться", "report-" + postId])],
   ];
@@ -84,12 +66,12 @@ function inlineComment(cache, postId) {
 }
 
 async function showToRate(ctx) {
-  const user = ctx.user,
+  let user = ctx.user,
     cache = ctx.session.cache,
     postId = cache.array[cache.indexWork]._id,
     rate = await ctx.base.getRate(postId);
   // TODO: Подгрузка оценок пользователя
-  cache.strings = [(rate ? "Средняя оценка работы: " + rate.toFixed(2) + "\nОцените работу:" : "Работу ещё никто не оценил, станьте первым!")];
+  cache.strings = [(rate.count ? "Средняя оценка работы: " + rate.avg.toFixed(2) + "\n\nОцените работу:" : "Работу ещё никто не оценил, станьте первым!")];
   cache.rates = [];
   cache.responsedMessageCounter = await user.sendWork(ctx);
   await ctx.reply(
@@ -173,14 +155,16 @@ new class RateScene extends Scene {
       work = cache.array[cache.indexWork];
     cache.rates.push(rate);
     cache.strings[cache.strings.length - 1] = 
-      clearStep(cache.strings[cache.strings.length - 1] += " " + numEmoji[+rate]);
-    if (cache.rates.length < typesMark[work.type].length) {
-      cache.strings.push(makeStepOf(cache.rates.length, typesMark[work.type]));
+      global.typesMarkName[work.type][cache.rates.length - 1] + " " + global.numEmoji[+rate];
+    if (cache.rates.length < global.typesMark[work.type].length) {
+      cache.strings.push(makeStepOf(cache.rates.length, global.typesMark[work.type]));
       await ctx.editMessageText(cache.strings.join("\n"));
       await ctx.editMessageReplyMarkup({
         inline_keyboard: ctx.session.inlineKeyboard.now(cache, postId)
       }).catch(()=>{});
     } else {
+      cache.rated_status = true;
+      delete cache.prevStrings;
       await ctx.editMessageText(cache.strings.join("\n"));
       await ctx.editMessageReplyMarkup({
         inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
@@ -230,9 +214,10 @@ new class RateScene extends Scene {
       postId = work._id;
     if (work.type === undefined) work = cache.array[cache.indexWork] = await ctx.base.getPost(work._id);
     cache.rates = [];
+    cache.prevStrings = cache.strings;
     cache.strings = [cache.strings[0]];
     if (cache.strings[0] === "Работу ещё никто не оценил, станьте первым!") cache.strings[0] = "";
-    cache.strings.push(makeStepOf(0, typesMark[work.type]));
+    cache.strings.push(makeStepOf(0, global.typesMark[work.type]));
     await ctx.editMessageText(cache.strings.join("\n"));
     await ctx.editMessageReplyMarkup({
       inline_keyboard: ctx.session.inlineKeyboard.go("Rate").now(cache, postId)
@@ -246,14 +231,14 @@ new class RateScene extends Scene {
     if (cache.rates.length > 0) {
       cache.rates.pop();
       cache.strings.pop();
-      cache.strings[cache.strings.length - 1] = makeStepOf(cache.rates.length, typesMark[work.type]);
+      cache.strings[cache.strings.length - 1] = makeStepOf(cache.rates.length, global.typesMark[work.type]);
       await ctx.editMessageText(cache.strings.join("\n"));
       await ctx.editMessageReplyMarkup({
         inline_keyboard: ctx.session.inlineKeyboard.now(cache, postId)
       }).catch(()=>{});
     } else {
       cache.rates = [];
-      cache.strings = [cache.strings[0]];
+      cache.strings = cache.prevStrings || [cache.strings[0]];
       if (cache.strings[0] === "") cache.strings[0] = "Работу ещё никто не оценил, станьте первым!";
       await ctx.editMessageText(cache.strings.join("\n"));
       await ctx.editMessageReplyMarkup({
@@ -309,6 +294,7 @@ new class RateScene extends Scene {
           text: ctx.message.text, 
           userId: ctx.from.id, 
           postId: postId,
+          username: ctx.from.username || ctx.from.first_name,
         };
         await ctx.deleteMessage();
         if (cache.comented_status) 

@@ -2,6 +2,52 @@ const Wrapper = require("./Wrapper");
 const {Markup} = require("telegraf");
 const {Mutex} = require("async-mutex");
 
+global.typesMark = [
+  [""],
+  [
+    "Оцените UX(юзабилити): ",
+    "Оцените UI: ",
+    "Оцените типографику: ",
+    "Оцените реализацию стиля и композицию: ",
+    "Оцените контент/графику: "],
+  [
+    "Оцените реализацию стиля: ",
+    "Оцените композицию: ",
+    "Оцените типографику: ",
+    "Оцените цветовые решения: ",
+    "Оцените считываемость: "
+  ]
+];
+global.typesMarkName = [
+  [""],
+  [
+    "UX(юзабилити): ",
+    "UI: ",
+    "Типографика: ",
+    "Реализация стиля и композиции: ",
+    "Контент/графика: "],
+  [
+    "Реализация стиля: ",
+    "Композиция: ",
+    "Типографика: ",
+    "Цветовые решения: ",
+    "Считываемость: "
+  ]
+];
+global.numEmoji = ["0⃣", "1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣"];
+
+function criteria(rate) {
+  return rate.map((m, i) => " " + global.typesMarkName[rate.type][i] + m.toFixed(2)).join("\n");
+}
+
+function getDate(time) {
+  return (new Date(time)).toLocaleDateString("ru-RU", { month: "long", day: "numeric" });
+}
+
+global.makeKeyboard = (keyboard) => {
+  return Markup.keyboard(keyboard).resize().extra();
+};
+
 class User extends Wrapper {
   constructor() {
     super();
@@ -108,16 +154,33 @@ class User extends Wrapper {
     });
     
     // Заготавливаем комментарий к работе
-    let msg = ((description) ? `Описание: \n${description}\n` : "") + "\nДата публикации: " + (new Date(post.time)).toLocaleDateString("ru-RU", { month: "long", day: "numeric" });
+    let msg = ((description) ? `Описание: \n${description}\n` : "") + 
+      "\nДата публикации: " + getDate(post.time);
     if (post.authId === ctx.from.id) {
       let rate = ctx.base.countRate(post);
-      msg += (rate === 0.0) ? "\nПока никто не оценил..." : "\nСредняя оценка: " + rate + "\nЧеловек оценило: " + Object.values(post.rates).length;
+      msg += (!rate.count) ? 
+        "\n\nПока никто не оценил..." :
+        "\n\nВсего оценок: " + rate.count +
+        "\nСредняя оценка работы: " + rate.avg.toFixed(2) + 
+        "\n\nОценки по критериям: \n" + criteria(rate);
     }
     
     // Отправляем комментарий
     await ctx.reply(msg, keyboard);
     cache.responsedMessageCounter += 1; // Не забываем про то что каждое новое сообщение влияет на размер сцены\
     
+    if (post.authId === ctx.from.id) {
+      let comments = await ctx.base.searchComments({postId: post._id});
+      if (comments.length) {
+        await ctx.replyWithMarkdown("*Комментарии:*");
+        cache.responsedMessageCounter += 1;
+        for (let comment of comments) {
+          cache.responsedMessageCounter += 1;
+          await ctx.replyWithMarkdown("Пользователь " + (comment.username || "*скрыл свой ник*") + `\n\n"${comment.text}"`);
+        }
+      }
+    }
+
     return cache.responsedMessageCounter;
   }
   // Размечает кеш

@@ -106,7 +106,6 @@ class InlineController {
   }
   now(...parametrs)
   {
-    console.log(this.stack);
     if (this.stack)
       return this.stack[this.stack.length - 1](...parametrs);
     else

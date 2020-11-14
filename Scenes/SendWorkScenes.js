@@ -6,7 +6,7 @@ async function sendWork(ctx) {
   await ctx.base.postedPost(ctx.from.id, work._id);
   await ctx.reply(
     "Работа успешно добавлена, найти её можно в разделе \"Мои работы\"\nЧтобы вернуться в главное меню нажмите \"назад\"",
-    Markup.keyboard(["🗳 Добавить ещё одну работу", "⬅ Назад"]).resize().extra()
+    global.makeKeyboard(["🗳 Добавить ещё одну работу", "⬅ Назад"])
   );
   await ctx.scene.enter("SendWorkAgain");
 }
@@ -39,7 +39,7 @@ new class SendWorkScene extends Scene {
   async enter(ctx) {
     const { message_id, chat } = await ctx.reply(
       "Выполните следующие действия:\n1. Отправьте все фотографии вашей работы в формате jpeg или png\n2. Нажмите кнопку ✅Готово\n\nПервая фотография будет использоваться в качестве превью к вашей работе",
-      Markup.keyboard(["✅ Готово", "⬅ Назад"]).resize().extra()
+      global.makeKeyboard(["✅ Готово", "⬅ Назад"])
     );
     ctx.session.caption = [chat.id, message_id];
     await ctx.scene.enter("SendWorkInit");
@@ -109,7 +109,7 @@ new class TypedWorkScene extends Scene {
     };
   }
   async enter(ctx) {
-    await ctx.reply("Выберите область, к которой принадлежит работа", Markup.keyboard(typeArray).resize().extra());
+    await ctx.reply("Выберите область, к которой принадлежит работа", global.makeKeyboard(typeArray));
   }
   async typed(ctx) {
     let typeIndex = typeArray.indexOf(ctx.message.text) + 1;
@@ -131,7 +131,7 @@ new class DescriptionQuestionScene extends Scene {
   async question(ctx) {
     await ctx.reply(
       "Добавить описание?",
-      Markup.keyboard(["✅ Да", "❌ Нет", "⬅ Назад"]).resize().extra()
+      global.makeKeyboard(["✅ Да", "❌ Нет", "⬅ Назад"])
     );
   }
 
