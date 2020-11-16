@@ -76,6 +76,8 @@ class User extends Wrapper {
         const release = await ctx.session.mutex.acquire(); // Делаем всё последовательно
         try {
           await next();
+        } catch (e) {
+          global.Controller.emit("Error", e.on);
         } finally {
           release();
         }
@@ -108,7 +110,7 @@ class User extends Wrapper {
     ctx.session.cache.responsedMessageCounter = await update.call(this, ctx);
     await this.deleteLastNMessage(ctx, count);
   }
-  // Удаление послених N сообщений
+  // Удаление послених N сообщений //TODO: сделать удаление на интервалах (для безопасного использования)
   async deleteLastNMessage(ctx, n) {
     this.alloc(ctx); //  Нужно тормознуть процессы для пользователя, так как удаление - дорогорстояющая операция
     n = n || ctx.session.cache.responsedMessageCounter + 1;

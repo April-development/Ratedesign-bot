@@ -262,7 +262,8 @@ new class RateScene extends Scene {
     await ctx.editMessageText(text);
     await ctx.editMessageReplyMarkup({
       inline_keyboard: ctx.session.inlineKeyboard.go("Comment").now(cache, postId)
-    }).catch(()=>{}); // если не нечего менять, оно выкенет ошибку
+    }).catch(()=>{}); // если нечего менять, оно выкенет ошибку
+    await ctx.answerCbQuery("");
   }
   
   async goCommentBack(ctx) {
@@ -304,7 +305,7 @@ new class RateScene extends Scene {
         await cache.ctx.editMessageText(cache.strings.join("\n"));
         await cache.ctx.editMessageReplyMarkup({
           inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
-        }).catch(()=>{}); // если не нечего менять, оно выкенет ошибку
+        }).catch(()=>{}); // если нечего менять, оно выкенет ошибку
         await cache.ctx.answerCbQuery("Комментарий отправлен").catch(()=>{});
         return;
       }

@@ -79,7 +79,7 @@ class DataBase {
       const resp = await collection.deleteMany(details);
       return resp.ops;
     } catch (e) {
-      global.Controller.emit("Error", e);
+      global.Controller.emit("Error", e.on);
     }
   }
   async getUser(userId) {
@@ -150,9 +150,10 @@ class DataBase {
   }
   async savePost(userId, postId) {
     console.log("savePost: ", userId, postId);
+    if (!postId) global.Controller.emit("Error", "Error: " + userId + ": DataBase: savePost: postId = " + postId);
     let user = await this.getUser(userId);
     let uniqed = false;
-    user.saved.push({ _id: ObjectID(postId) });
+    user.saved.push({ _id: postId });
     [uniqed, user.saved] = uniq(user.saved);
     if (uniqed) {
       await global.DataBaseController.putUser(userId, { saved: user.saved });
