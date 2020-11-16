@@ -6,7 +6,7 @@ const { Scene, Markup, Extra, InlineController } = require("./Scenes");
 async function findSavedStatus(ctx, userId, postId)
 {
   let user = await ctx.base.getUser(userId);
-  return user.saved.find((post)=> post._id == ObjectID(postId)) != -1;
+  return user.saved.find((post)=> ("" + post._id) === ("" + postId)) != undefined;
 }
 async function findReportStatus(ctx, userId, postId)
 {
