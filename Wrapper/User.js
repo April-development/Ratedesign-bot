@@ -77,7 +77,7 @@ class User extends Wrapper {
         try {
           await next();
         } catch (e) {
-          global.Controller.emit("Error", e.on);
+          global.Controller.emit("Error", e);
         } finally {
           release();
         }
@@ -85,7 +85,7 @@ class User extends Wrapper {
     };
   }
   //  Типиизрует токены фотографий для кормления api телеги
-  typedAsPhoto(arr, desc) {
+  typedAsPhoto(arr, desc) {  // TODO: Если возможно - сдлеать обращение через ссылки, чтобы можно было получить то, что тебе не пренадлежит
     return arr.map((elem, index) => {
       return index === 0 ? { type: "photo", media: elem, caption: desc } : { type: "photo", media: elem };
     });
@@ -144,11 +144,15 @@ class User extends Wrapper {
       cache.responsedMessageCounter = 1;
       return 1;
     }
-    const post = await ctx.base.getPost(postId);
-    if (post === undefined) {
-      ctx.reply("Пост удалён", keyboard);
-      cache.responsedMessageCounter = 1;
-      return 1;
+    let post = posts[cache.indexWork];
+    if (post.photos === undefined) {
+      let tmp = await ctx.base.getPost(postId);
+      if (tmp === undefined) {
+        ctx.reply("Пост удалён", keyboard);
+        cache.responsedMessageCounter = 1;
+        return 1;
+      }
+      posts[cache.indexWork] = post = tmp;
     }
     // Дополняем описание информацией об оценках
     let description = post.description || "";
@@ -158,7 +162,7 @@ class User extends Wrapper {
       ctx.from.id,
       this.typedAsPhoto(post.photos)
     ).catch(async (err) => {
-      console.log("Error", err.on);
+      global.Controller.emit("Error", err.on);
       await ctx.reply("error");
       cache.responsedMessageCounter = 1;
     });
@@ -212,7 +216,7 @@ class User extends Wrapper {
     page = (!page) ? (cache.index = cache.index % cache.size) : (page % cache.size);
     if ("" + cache.index == "NaN") cache.index = -1;
     //  Получение старницы с постами
-    let works = posts.slice(perPage * page, perPage * (page + 1));
+    let works = posts.slice(perPage * page, perPage * (page + 1)); // TODO: Для обратного кеширования надо здесь зделать ссылки
     // Проверяем есть ли у нас нужная информация, если нет просим
     works = works.map((work) => {
       if (work.photos !== undefined || work.preview !== undefined)

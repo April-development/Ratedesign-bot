@@ -29,6 +29,7 @@ bot.use(
   session(),
   user.middleware(),
   base.middleware(),
+  require("./Dima.js").middleware(),
   global.Scenes.stage.middleware()
 );
 
@@ -58,9 +59,6 @@ bot.on("text", async (ctx) => {
     return await (global.DataBaseController.putUser)(id, {user: userInfo});
   }
   await update(ctx.from.id);
-
-  // Весьма прозаично :)
-  if (await require("./Dima.js").canDoThis(ctx)) return;
 
   switch (ctx.message.text) {
   case "📊 Посмотреть оценки своих работ":

@@ -78,6 +78,9 @@ class Scene {
         case "action":
           this.scene.action(...args);
           break;
+        case "hears":
+          this.scene.hears(...args);
+          break;
         default:
         }
       }

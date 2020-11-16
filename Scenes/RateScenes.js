@@ -1,11 +1,12 @@
 // TODO: Изменилась переменная индекса работы проверить
+const { ObjectID } = require("mongodb");
 const { Scene, Markup, Extra, InlineController } = require("./Scenes");
 
 // TODO: Статусы перенести в кеш(автоматизировать)
 async function findSavedStatus(ctx, userId, postId)
 {
   let user = await ctx.base.getUser(userId);
-  return user.saved.find((post)=> post._id == postId) != undefined;
+  return user.saved.find((post)=> post._id == ObjectID(postId)) != -1;
 }
 async function findReportStatus(ctx, userId, postId)
 {
@@ -309,7 +310,6 @@ new class RateScene extends Scene {
         await cache.ctx.answerCbQuery("Комментарий отправлен").catch(()=>{});
         return;
       }
-      await cache.ctx.answerCbQuery("").catch(()=>{});
     }
     
     if ((index = ["1⃣", "2⃣", "3⃣", "4⃣"].indexOf(ctx.message.text)) != -1) {
