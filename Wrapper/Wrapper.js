@@ -8,12 +8,12 @@ class Wrapper {
   }
   //  Расширение контекста объектом данного класса
   middleware() {
-    return (ctx, next) => {
+    return async (ctx, next) => {
       //  Рашсирение контекста
       ctx.wrap = this;
       //  Антиспам пользователей, который ебашит пермач до
       //  тех пор, пока все запросы не обработаются
-      if (this.users[ctx.from.id] === undefined) next();
+      if (this.users[ctx.from.id] === undefined) await next();
     };
   }
   //  Блочит следующие запросы

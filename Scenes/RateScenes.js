@@ -110,7 +110,6 @@ new class RateScene extends Scene {
     ctx.session.caption = [chat.id, message_id];
       
     const user = await ctx.base.getUser(ctx.from.id);
-    console.log(user);
     let cache = (ctx.session.cache = { 
       index: user.page,
       perPage: 4,
@@ -255,7 +254,6 @@ new class RateScene extends Scene {
       postId = work._id;
     cache.need_comment = true;
     cache.ctx = ctx;
-    cache.responsedMessageCounter += 1;
     let text = (cache.comented_status)?
       "Ваш комментарий:\n" +
       (await ctx.base.getComment(postId, ctx.from.id)).text + 

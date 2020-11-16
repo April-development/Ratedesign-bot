@@ -61,17 +61,25 @@ class User extends Wrapper {
   //  Расширение контекста объектом данного класса
   middleware() {
     return async (ctx, next) => {
-      //  Рашсирение контекста
-      ctx.user = this;
-      //  Антиспам пользователей, который ебашит пермач до
-      //  тех пор, пока все запросы не обработаются
-      ctx.session.mutex = ctx.session.mutex || new Mutex;
-      const release = await ctx.session.mutex.acquire(); // Делаем всё последовательно
-      try {
-        await next();
-      } finally {
-        release();
-      }
+      (async () => {
+        //  Рашсирение контекста
+        ctx.user = this;
+        //  Одновременно обрабатываем только один запрос от одного пользователя иначе скипаем
+        ctx.session.mutex = ctx.session.mutex || new Mutex;
+        console.log(ctx.from.id + "(" + (ctx.from.username || ctx.from.first_name || "unknown") + "):", (ctx.session.mutex.isLocked()) ? "skip" : "todo",
+          (ctx.message) ? "\"" + ctx.message.text + "\"" :
+            (ctx.update.callback_query) ? ctx.update.callback_query.data : "");
+        if (ctx.session.mutex.isLocked()) {
+          if (ctx.message) ctx.deleteMessage();
+          return;
+        }
+        const release = await ctx.session.mutex.acquire(); // Делаем всё последовательно
+        try {
+          await next();
+        } finally {
+          release();
+        }
+      })();
     };
   }
   //  Типиизрует токены фотографий для кормления api телеги
