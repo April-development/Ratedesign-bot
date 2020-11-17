@@ -112,7 +112,7 @@ new class RateScene extends Scene {
         [/([1-5])-([\w\D]*)/, this.ratePost],
         [/save-([\w\D]*)/, this.savePost],
         [/([1-3])report-([\w\D]*)/, this.reportPost],
-        [/report-([\w\D]*)/, this.goReports],
+        [/report-([\w\D]*)/, this.goReport],
         [/back-([\w\D]*)/, this.goBack],
         [/nop/, this.nop],
       ],
@@ -182,8 +182,8 @@ new class RateScene extends Scene {
     await ctx.answerCbQuery("Вы поставили " + rate);
   }
 
-  async goReports(ctx) {
-    await updateInline(ctx, ctx.session.inlineKeyboard.go("Reports"));
+  async goReport(ctx) {
+    await updateInline(ctx, ctx.session.inlineKeyboard.go("Report"));
     await ctx.answerCbQuery("");
   }
 

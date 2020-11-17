@@ -70,7 +70,9 @@ class InlineController {
     return this;
   }
   go(name) {
-    this.stack.push(this.map[name]);
+    let tmp = this.map[name];
+    if (tmp === undefined) throw new Error("InlineController: don`t contane a '" + name + "' may be: " + Object.keys(this.map).map((s)=>" '"+s+"'"));
+    this.stack.push(tmp);
     return this;
   }
   stage(object) {
@@ -81,7 +83,7 @@ class InlineController {
   }
   now(...parametrs)
   {
-    if (this.stack)
+    if (this.stack && this.stack.length)
       return this.stack[this.stack.length - 1](...parametrs);
     else
       return undefined;
