@@ -26,6 +26,21 @@ function clearStep(str) {
   return str.replace(str.match(/\(\d\/\d\)\s/)[0], "");
 }
 
+async function updateInline(ctx, controller, text) {
+  let cache = ctx.session.cache,
+    postId = cache.array[cache.indexWork]._id;
+  if (text === undefined || text === "") {
+    await ctx.editMessageReplyMarkup({
+      inline_keyboard: ctx.session.inlineKeyboard.now(cache, postId)
+    }).catch(()=>{});
+  } else {
+    await ctx.editMessageText(
+      text,
+      Extra.markup(Markup.inlineKeyboard(controller.now(cache, postId)))
+    ).catch(()=>{});
+  }
+}
+
 function inlineRate(cache, postId) {
   return [
     [...Array(5).keys()].map((i) =>
@@ -141,9 +156,7 @@ new class RateScene extends Scene {
       return;    
     } 
     cache.saved_status = true;
-    await ctx.editMessageReplyMarkup({
-      inline_keyboard: ctx.session.inlineKeyboard.now(ctx.session.cache, postId)
-    }).catch(()=>{});
+    await updateInline(ctx, ctx.session.inlineKeyboard);
     await ctx.base.savePost(ctx.chat.id, postId);
     await ctx.answerCbQuery("Сохранено");
   }
@@ -158,17 +171,11 @@ new class RateScene extends Scene {
       global.typesMarkName[work.type][cache.rates.length - 1] + " " + global.numEmoji[+rate];
     if (cache.rates.length < global.typesMark[work.type].length) {
       cache.strings.push(makeStepOf(cache.rates.length, global.typesMark[work.type]));
-      await ctx.editMessageText(cache.strings.join("\n"));
-      await ctx.editMessageReplyMarkup({
-        inline_keyboard: ctx.session.inlineKeyboard.now(cache, postId)
-      }).catch(()=>{});
+      await updateInline(ctx, ctx.session.inlineKeyboard, cache.strings.join("\n"));
     } else {
       cache.rated_status = true;
       delete cache.prevStrings;
-      await ctx.editMessageText(cache.strings.join("\n"));
-      await ctx.editMessageReplyMarkup({
-        inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
-      }).catch(()=>{});
+      await updateInline(ctx, ctx.session.inlineKeyboard.goBack(), cache.strings.join("\n"));
       await ctx.base.putRate(ctx.from.id, postId, cache.rates);
       await ctx.base.seenPost(ctx.from.id, postId);
     }
@@ -176,10 +183,7 @@ new class RateScene extends Scene {
   }
 
   async goReports(ctx) {
-    const postId = ctx.match[1];
-    await ctx.editMessageReplyMarkup({
-      inline_keyboard: ctx.session.inlineKeyboard.go("Report").now(ctx.session.cache, postId)
-    }).catch(()=>{});
+    await updateInline(ctx, ctx.session.inlineKeyboard.go("Reports"));
     await ctx.answerCbQuery("");
   }
 
@@ -194,56 +198,40 @@ new class RateScene extends Scene {
     cache.report_status = true;
     await ctx.base.putReport(postId, ctx.from.id, reportId);
     await ctx.base.seenPost(ctx.from.id, postId);
-    await ctx.editMessageReplyMarkup({
-      inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
-    }).catch(()=>{}); // если не нечего менять, оно выкенет ошибку // TODO: сделать отельную функцию
+    await updateInline(ctx, ctx.session.inlineKeyboard.goBack());
     await ctx.answerCbQuery("Жалоба отправлена");
   }
 
   async goBack(ctx) {
-    const postId = ctx.match[1];
-    await ctx.editMessageReplyMarkup({
-      inline_keyboard: ctx.session.inlineKeyboard.goBack().now(ctx.session.cache, postId)
-    });
+    await updateInline(ctx, ctx.session.inlineKeyboard.goBack());
     await ctx.answerCbQuery("Назад");
   }
 
   async goRate(ctx) {
     let cache = ctx.session.cache,
-      work = cache.array[cache.indexWork],
-      postId = work._id;
+      work = cache.array[cache.indexWork];
     if (work.type === undefined) work = cache.array[cache.indexWork] = await ctx.base.getPost(work._id);
     cache.rates = [];
     cache.prevStrings = cache.strings;
     cache.strings = [cache.strings[0]];
     if (cache.strings[0] === "Работу ещё никто не оценил, станьте первым!") cache.strings[0] = "";
     cache.strings.push(makeStepOf(0, global.typesMark[work.type]));
-    await ctx.editMessageText(cache.strings.join("\n"));
-    await ctx.editMessageReplyMarkup({
-      inline_keyboard: ctx.session.inlineKeyboard.go("Rate").now(cache, postId)
-    }).catch(()=>{});
+    await updateInline(ctx, ctx.session.inlineKeyboard.go("Rate"), cache.strings.join("\n"));
     await ctx.answerCbQuery("Можно приступить к оценке");
   }
   async goRateBack(ctx) {
     let cache = ctx.session.cache,
-      work = cache.array[cache.indexWork],
-      postId = work._id;
+      work = cache.array[cache.indexWork];
     if (cache.rates.length > 0) {
       cache.rates.pop();
       cache.strings.pop();
       cache.strings[cache.strings.length - 1] = makeStepOf(cache.rates.length, global.typesMark[work.type]);
-      await ctx.editMessageText(cache.strings.join("\n"));
-      await ctx.editMessageReplyMarkup({
-        inline_keyboard: ctx.session.inlineKeyboard.now(cache, postId)
-      }).catch(()=>{});
+      await updateInline(ctx, ctx.session.inlineKeyboard, cache.strings.join("\n"));
     } else {
       cache.rates = [];
       cache.strings = cache.prevStrings || [cache.strings[0]];
       if (cache.strings[0] === "") cache.strings[0] = "Работу ещё никто не оценил, станьте первым!";
-      await ctx.editMessageText(cache.strings.join("\n"));
-      await ctx.editMessageReplyMarkup({
-        inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
-      }).catch(()=>{});
+      await updateInline(ctx, ctx.session.inlineKeyboard.goBack(), cache.strings.join("\n"));
     }
     await ctx.answerCbQuery("");
   }
@@ -259,21 +247,14 @@ new class RateScene extends Scene {
       (await ctx.base.getComment(postId, ctx.from.id)).text + 
       "\n\nТеперь отправьте новый комментарий:":
       "Теперь отправьте свой комментарий:";
-    await ctx.editMessageText(text);
-    await ctx.editMessageReplyMarkup({
-      inline_keyboard: ctx.session.inlineKeyboard.go("Comment").now(cache, postId)
-    }).catch(()=>{}); // если нечего менять, оно выкенет ошибку
+    await updateInline(ctx, ctx.session.inlineKeyboard.go("Comment"), text);
     await ctx.answerCbQuery("");
   }
   
   async goCommentBack(ctx) {
-    let cache = ctx.session.cache,
-      postId = ctx.match[1];
+    let cache = ctx.session.cache;
     delete cache.need_comment;
-    await ctx.editMessageText(cache.strings.join("\n"));
-    await ctx.editMessageReplyMarkup({
-      inline_keyboard: ctx.session.inlineKeyboard.goBack().now(ctx.session.cache, postId)
-    });
+    await updateInline(ctx, ctx.session.inlineKeyboard.goBack(), cache.strings.join("\n"));
     await ctx.answerCbQuery("Назад");
   }
 
@@ -302,10 +283,7 @@ new class RateScene extends Scene {
         else
           await ctx.base.setComment(comment);
         cache.comented_status = true;
-        await cache.ctx.editMessageText(cache.strings.join("\n"));
-        await cache.ctx.editMessageReplyMarkup({
-          inline_keyboard: ctx.session.inlineKeyboard.goBack().now(cache, postId)
-        }).catch(()=>{}); // если нечего менять, оно выкенет ошибку
+        await updateInline(ctx, ctx.session.inlineKeyboard.goBack(), cache.strings.join("\n"));
         await cache.ctx.answerCbQuery("Комментарий отправлен").catch(()=>{});
         return;
       }
