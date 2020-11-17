@@ -82,12 +82,16 @@ class Dima {
           case "info":
             if (haveCache(ctx) && ctx.session.cache.status === "one") {
               let cache = ctx.session.cache;
-              const {_id, authId, time} = cache.array[cache.indexWork];
+              let {_id, authId, time, reports} = cache.array[cache.indexWork];
               updateResponseCounter(ctx, 2);
+              reports = reports || [0, 0, 0];
+              let sum = reports.reduce((p, c) => p + c) || 0;
               await ctx.replyWithMarkdown(
                 "Post: `" + _id +
                 "`\nAuth: `" + authId +
-                "`\nDate: `" + timeToString(time) + "`");
+                "`\nDate: `" + timeToString(time) + "`"+
+                "\nReports: " + sum + (sum ? " {" + reports.map((e)=>((e/sum).toFixed(2) * 100) + "%") + "}": "")
+              );
             }
             return true;
           case "remove":
