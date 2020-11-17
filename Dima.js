@@ -38,7 +38,7 @@ class Dima {
   async canDoThis(ctx) {
     let keyWord = "dima",
       forUser = "радик";
-    console.log(ctx.message);
+    
     if (ctx.message) {
       let words = ctx.message.text !== undefined ? ctx.message.text.split(" ") : [];
       if (words[0]) words[0] = words[0].toLowerCase();
