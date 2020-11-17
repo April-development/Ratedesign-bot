@@ -48,7 +48,7 @@ class Dima {
         (ctx.chat.type === "supergroup" || ctx.chat.type === "group") && ( 
           (words && ctx.message.reply_to_message !== undefined && words[0] === forUser && ctx.message.reply_to_message.photo)
           || (probability > Math.random() && ctx.message.photo)
-          || (ctx.message.caption.toLowerCase() === forUser && ctx.message.photo)
+          || ((ctx.message.caption || "").toLowerCase() === forUser && ctx.message.photo)
         )
       ) {
         let mark = Math.round(Math.random() * 10);
