@@ -44,7 +44,7 @@ class Dima {
 
       let probability = 0.3;
       if (
-        ctx.chat.type === "supergroup" && ( 
+        (ctx.chat.type === "supergroup" || ctx.chat.type === "group") && ( 
           (words && ctx.message.reply_to_message !== undefined && words[0] === forUser)
           || (probability > Math.random() && ctx.message.photo)
         )
