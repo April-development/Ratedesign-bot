@@ -124,7 +124,10 @@ class Dima {
               let post = await global.DataBaseController.getPost(postId);
               await global.DataBaseController.set("BanedPost", post);
               await global.DataBaseController.deletePost(postId);
-              ctx.replyWithMarkdown("Baned `"+ postId + "`");
+              await ctx.replyWithMarkdown("Baned `"+ postId + "`");
+            } else {
+              await ctx.reply("Банить нечего!");
+              updateResponseCounter(ctx, 2);
             }
             return true;
           case "db":
