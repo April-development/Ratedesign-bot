@@ -58,7 +58,7 @@ class Dima {
                     users = await global.DataBaseController.get("User", {"user.first_name": words[2]});
                 }
                 let responce = "";
-                for (let user of users)
+                for (let {user} of users)
                   responce += userInfo(user);
                 let chunks = responce.chunk(4000);
                 for (let part of chunks) await ctx.reply(part);
