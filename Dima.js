@@ -1,5 +1,6 @@
 const exec = require("child_process").exec;
 const fs = require("fs");
+const {ObjectID} = require("mongodb");
 
 function timeToString(time) {
   return (new Date(time)).toLocaleDateString("ru-RU", {
@@ -87,8 +88,8 @@ class Dima {
               reports = reports || [0, 0, 0];
               let sum = reports.reduce((p, c) => p + c) || 0;
               await ctx.replyWithMarkdown(
-                "Post: `" + _id +
-                "`\nAuth: `" + authId +
+                "Post: `\"" + _id +
+                "\"`\nAuth: `" + authId +
                 "`\nDate: `" + timeToString(time) + "`"+
                 "\nReports: " + sum + (sum ? " {" + reports.map((e)=>((e/sum).toFixed(2) * 100) + "%") + "}": "")
               );
@@ -97,9 +98,33 @@ class Dima {
           case "remove":
             if (ctx.session && ctx.session.cache && ctx.session.cache.status === "one") {
               let cache = ctx.session.cache;
-              const postId = cache.array[cache.indexWork].postId;
+              const postId = cache.array[cache.indexWork]._id;
               updateResponseCounter(ctx, 2);
-              ctx.reply(await global.DataBaseController.remove("Post", {_id: postId}));
+              await global.DataBaseController.deletePost(postId);
+              ctx.reply("Removed");
+            }
+            return true;
+          case "ban":
+            if (words[2] !== undefined) {
+              let postId = words[2];
+              updateResponseCounter(ctx, 2);
+              let post = (await global.DataBaseController.get("BanedPost", {"_id": ObjectID(postId)}))[0];
+              if (post === undefined) {
+                ctx.reply("Don`t found this one.");
+                return true;
+              }
+              await global.DataBaseController.set("Post", post);
+              await global.DataBaseController.remove("BanedPost", {"_id": ObjectID(postId)});
+              await ctx.replyWithMarkdown("State back `"+ postId + "`");
+            } else 
+            if (ctx.session && ctx.session.cache && ctx.session.cache.status === "one") {
+              let cache = ctx.session.cache;
+              const postId = cache.array[cache.indexWork]._id;
+              updateResponseCounter(ctx, 2);
+              let post = await global.DataBaseController.getPost(postId);
+              await global.DataBaseController.set("BanedPost", post);
+              await global.DataBaseController.deletePost(postId);
+              ctx.replyWithMarkdown("Baned `"+ postId + "`");
             }
             return true;
           case "db":
