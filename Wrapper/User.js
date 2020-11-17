@@ -80,7 +80,7 @@ class User extends Wrapper {
         try {
           await next();
         } catch (e) {
-          global.Controller.emit("Error", e);
+          global.Controller.emit("Error", e.stack);
         } finally {
           release();
         }
