@@ -1,9 +1,33 @@
 const exec = require("child_process").exec;
 const fs = require("fs");
 
+function timeToString(time) {
+  return (new Date(time)).toLocaleDateString("ru-RU", {
+    day: "numeric", month: "numeric", year: "numeric",
+    hour: "numeric", minute: "numeric", second: "numeric"
+  });
+}
+
+function userInfo(user) {
+  return ((user.first_name || "") 
+    + ((user.last_name) ? " " + user.last_name : "") 
+    + (user.username ? " (" + user.username + ")" : "") || "unknown") 
+    + (user.lastVisit ? "[" + timeToString(user.lastVisit) + "]": "") 
+    + ": " + user.id + "\n";       
+}
+
+function haveCache(ctx) {
+  return ctx.session && ctx.session.cache && ctx.session.cache.responsedMessageCounter !== undefined;
+}
+
+function updateResponseCounter(ctx, num) {
+  if (haveCache(ctx))
+    ctx.session.cache.responsedMessageCounter += num;
+}
+
 class Dima {
   async canDoThis(ctx) {
-    if (ctx.message) {
+    if (ctx.message && ctx.message.text) {
       let keyWord = "Dima",
         words = ctx.message.text.split(" ");
       String.prototype.chunk = function(size) {
@@ -22,10 +46,9 @@ class Dima {
               let id = +words[2];
               if (!isNaN(id)) {
                 let user = (await global.DataBaseController.getUser(id)).user;
-                let responce = ((user.first_name || "") + ((user.last_name) ? " " + user.last_name : "") + (user.username ? " (" + user.username + ")" : "") || "unknown") + ": " + user.id + "\n";
-                ctx.reply(responce);
-                if (ctx.session && ctx.session.cache && ctx.session.cache.responsedMessageCounter !== undefined)
-                  ctx.session.cache.responsedMessageCounter += 2;
+                let responce = userInfo(user);
+                await ctx.reply(responce);
+                updateResponseCounter(ctx, 2);  
               } else {
                 let users = await global.DataBaseController.get("User", {"user.username": words[2]});
                 if (!users.length)
@@ -35,47 +58,43 @@ class Dima {
                     users = await global.DataBaseController.get("User", {"user.first_name": words[2]});
                 }
                 let responce = "";
-                for (let {user} of users)
-                  responce += ((user.first_name || "") + ((user.last_name) ? " " + user.last_name : "") + (user.username ? " (" + user.username + ")" : "") || "unknown") + ": " + user.id + "\n";
+                for (let user of users)
+                  responce += userInfo(user);
                 let chunks = responce.chunk(4000);
                 for (let part of chunks) await ctx.reply(part);
-                if (ctx.session && ctx.session.cache && ctx.session.cache.responsedMessageCounter !== undefined)
-                  ctx.session.cache.responsedMessageCounter += chunks.length + 1;
+                updateResponseCounter(ctx, chunks.length + 1);
               }
-            } else
+            } else {
               await ctx.reply(ctx.from.id);
+              updateResponseCounter(ctx, 2);
+            }
             return true;
           case "ids": {
             let users = (await global.DataBaseController.get("User")).map(data => data.user),
               responce = "";
             for (let user of users)
-              responce += ((user.first_name || "") + ((user.last_name) ? " " + user.last_name : "") + (user.username ? " (" + user.username + ")" : "") || "unknown") + ": " + user.id + "\n";
+              responce += userInfo(user);
             let chunks = responce.chunk(4000);
             for (let part of chunks) await ctx.reply(part);
-            if (ctx.session && ctx.session.cache && ctx.session.cache.responsedMessageCounter !== undefined)
-              ctx.session.cache.responsedMessageCounter += chunks.length + 1;
+            updateResponseCounter(ctx, chunks.length + 1);
             return true;
           }
           case "info":
-            if (ctx.session && ctx.session.cache && ctx.session.cache.status === "one") {
+            if (haveCache(ctx) && ctx.session.cache.status === "one") {
               let cache = ctx.session.cache;
               const {_id, authId, time} = cache.array[cache.indexWork];
-              console.log(cache.array[cache.indexWork]);
-              cache.responsedMessageCounter += 2;
+              updateResponseCounter(ctx, 2);
               await ctx.replyWithMarkdown(
                 "Post: `" + _id +
                 "`\nAuth: `" + authId +
-                "`\nDate: `" + (new Date(time)).toLocaleDateString("ru-RU", {
-                  day: "numeric", month: "numeric", year: "numeric",
-                  hour: "numeric", minute: "numeric", second: "numeric"
-                }) + "`");
+                "`\nDate: `" + timeToString(time) + "`");
             }
             return true;
           case "remove":
             if (ctx.session && ctx.session.cache && ctx.session.cache.status === "one") {
               let cache = ctx.session.cache;
               const postId = cache.array[cache.indexWork].postId;
-              cache.responsedMessageCounter += 2;
+              updateResponseCounter(ctx, 2);
               ctx.reply(await global.DataBaseController.remove("Post", {_id: postId}));
             }
             return true;
@@ -88,14 +107,15 @@ class Dima {
                 let responce = await (global.DataBaseController[words[2]](...args)) || "<Empty>";
                 let chunks = JSON.stringify(responce, null, 1).chunk(4000);
                 for (let part of chunks) ctx.reply(part);
-                if (ctx.session && ctx.session.cache && ctx.session.cache.responsedMessageCounter !== undefined)
-                  ctx.session.cache.responsedMessageCounter += chunks.length + 1;
+                updateResponseCounter(ctx, chunks.length + 1);
               } catch (error) {
                 ctx.reply(error.toString());
-                if (ctx.session && ctx.session.cache && ctx.session.cache.responsedMessageCounter !== undefined)
-                  ctx.session.cache.responsedMessageCounter += 2;
+                updateResponseCounter(ctx, 2);
               }
-            } else ctx.reply("Не трать моё время, скажи что тебе нужно!"); 
+            } else {
+              ctx.reply("Не трать моё время, скажи что тебе нужно!");
+              updateResponseCounter(ctx, 2);
+            }
             return true;
           case "forall":
             {
@@ -152,15 +172,14 @@ class Dima {
           let msg = "Responce:\n" + stdout + ((stderr) ? ("\nLog: " + stderr) : "") + "\n" + (err || "");
           let chunks = msg.chunk(4000);
           for (let part of chunks) await ctx.reply(part);
-          if (ctx.session && ctx.session.cache && ctx.session.cache.responsedMessageCounter !== undefined)
-            ctx.session.cache.responsedMessageCounter += chunks.length + 1;
-          console.log(msg);
+          updateResponseCounter(ctx, chunks.length + 1);
+          console.log("'", msg, "'");
         }
         );
         return true;
       }
     }
-    return false;
+    return ctx.chat.type !== "private";
   }
   middleware() {
     return async (ctx, next) => {

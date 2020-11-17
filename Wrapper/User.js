@@ -66,9 +66,12 @@ class User extends Wrapper {
         ctx.user = this;
         //  Одновременно обрабатываем только один запрос от одного пользователя иначе скипаем
         ctx.session.mutex = ctx.session.mutex || new Mutex;
-        console.log(ctx.from.id + "(" + (ctx.from.username || ctx.from.first_name || "unknown") + "):", (ctx.session.mutex.isLocked()) ? "skip" : "todo",
+        console.log(
+          ctx.from.id + "(" + (ctx.from.username || ctx.from.first_name || "unknown") + 
+          ")[" + ctx.chat.id + "]:", (ctx.session.mutex.isLocked()) ? "skip" : "todo",
           (ctx.message) ? "\"" + ctx.message.text + "\"" :
-            (ctx.update.callback_query) ? ctx.update.callback_query.data : "");
+            (ctx.update.callback_query) ? ctx.update.callback_query.data : ""
+        );
         if (ctx.session.mutex.isLocked()) {
           if (ctx.message) ctx.deleteMessage();
           return;
@@ -81,6 +84,8 @@ class User extends Wrapper {
         } finally {
           release();
         }
+        // Обновим время
+        global.DataBaseController.putUser(ctx.from.id, {"user.lastVisit": Date.now()});
       })();
     };
   }

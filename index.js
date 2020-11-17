@@ -1,9 +1,10 @@
 const { token, dbName, mongo } = require(process.env.BOT_CONFIG);
 
-const { Telegraf, Markup, session } = require("./Scenes");
-
 // Роутер бота
-const bot = new Telegraf(token);
+global.bot = new (require("telegraf"))(token);
+global.telegram = new (require("telegraf/telegram"))(token);
+
+var { Markup, session } = require("./Scenes");
 
 // Обработка обращений к базе данных
 const base = require("./Wrapper/DataBase").get();
@@ -25,7 +26,7 @@ user.main = async (ctx) => {
 };
 
 // Устанавливаем обработчики
-bot.use(
+global.bot.use(
   session(),
   user.middleware(),
   base.middleware(),
@@ -39,8 +40,8 @@ global.adminsIds = [711071113, 430830139, 367750507, 742576159, 949690401];
 // console.log(global.ScenesController.scenesId());
 
 // Доступные на главной команды
-bot.start(user.main);
-bot.on("text", async (ctx) => {
+global.bot.start(user.main);
+global.bot.on("text", async (ctx) => {
   if (!ctx.session.caption) await user.main(ctx);
   if (!ctx.session.inited && !(await ctx.base.getUser(ctx.from.id)))
     await ctx.base.setUser({
@@ -56,6 +57,7 @@ bot.on("text", async (ctx) => {
   
   async function update(id) {
     let userInfo = (await (ctx.telegram.getChatMember)(id, id)).user;
+    userInfo.lastVisit = Date.now();
     return await (global.DataBaseController.putUser)(id, {user: userInfo});
   }
   await update(ctx.from.id);
@@ -78,7 +80,7 @@ bot.on("text", async (ctx) => {
 
 global.Controller.once("Launch", async () => {
   await global.DataBaseController.connect(dbName, mongo);
-  await bot.launch();
+  await global.bot.launch();
   
   //console.log(await global.DataBaseController.remove("Post"));    //---------+
   //console.log(await global.DataBaseController.remove("User"));   // For vipe |

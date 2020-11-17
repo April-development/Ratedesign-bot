@@ -1,37 +1,3 @@
-const { EventEmitter, captureRejectionSymbol, once } = require("events");
-
-class Controller extends EventEmitter {
-  constructor() {
-    super({ captureRejections: true });
-  }
-  set struct(struct) {
-    for (var name in struct) {
-      for (var args of struct[name]) {
-        switch (name) {
-        case "on":
-          this.on(...args);
-          break;
-        case "once":
-          this.once(...args);
-          break;
-        case "off":
-          this.off(...args);
-          break;
-        case "pre":
-          this.prependListener(...args);
-          break;
-        case "remove":
-          this.removeListener(...args);
-          break;
-        }
-      }
-    }
-  }
-  [captureRejectionSymbol](err, event, ...args) {
-    console.log("Rejection happened for", event, "with", err, ...args);
-  }
-}
-
 const Telegraf = require("telegraf");
 const { Stage, session, Markup, Extra } = Telegraf;
 const SceneBase = require("telegraf/scenes/base");
@@ -68,6 +34,12 @@ class Scene {
     console.log(this.name, obj);
     for (var name in this.sceneStruct) {
       for (var args of this.sceneStruct[name]) {
+        for (var arg of args) {
+          if (arg === undefined) {
+            global.Controller.emit("Error", "Error: Scene(", this.name, ").", name, "(", args, ")");
+            global.Fatal();
+          }
+        }
         switch (name) {
         case "on":
           this.scene.on(...args);
@@ -118,7 +90,6 @@ class InlineController {
 
 // Единыжды создаст контроллер и сцены (восстановит в случае чего)
 if (global.Scenes === undefined) global.Scenes = new Scenes();
-if (global.Controller === undefined) global.Controller = new Controller();
 
 module.exports = {
   Scene,
@@ -128,6 +99,6 @@ module.exports = {
   Markup,
   Extra,
   Telegraf,
-  once,
+  once: require("events").once,
   InlineController,
 };

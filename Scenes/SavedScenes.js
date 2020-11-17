@@ -1,6 +1,5 @@
 const { Scene } = require("./Scenes");
 
-
 new class SavedScene extends Scene {
   constructor() {
     super("Saved");
