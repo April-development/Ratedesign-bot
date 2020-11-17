@@ -36,12 +36,13 @@ function updateResponseCounter(ctx, num) {
 
 class Dima {
   async canDoThis(ctx) {
-    let keyWord = "Dima",
-      forUser = "Радик";
+    let keyWord = "dima",
+      forUser = "радик";
 
     if (ctx.message) {
       let words = ctx.message.text !== undefined ? ctx.message.text.split(" ") : [];
-
+      if (words[0]) words[0] = words[0].toLowerCase();
+      
       let probability = 0.3;
       if (
         (ctx.chat.type === "supergroup" || ctx.chat.type === "group") && ( 
