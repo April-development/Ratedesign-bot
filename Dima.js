@@ -1,11 +1,15 @@
 const exec = require("child_process").exec;
+const { execSync } = require("child_process");
 const fs = require("fs");
 const {ObjectID} = require("mongodb");
 
 String.prototype.chunk = function(size) {
-  return [].concat.apply([],
-    this.split("").map(function(x,i){ return i%size ? [] : this.slice(i,i+size); }, this)
-  );
+  let chunks = [],
+    pos = 0;
+  while (pos < this.length) {
+    chunks.push(this.substr(pos, pos += size));
+  }
+  return chunks;
 };
 
 function timeToString(time) {
@@ -31,6 +35,23 @@ function updateResponseCounter(ctx, num) {
   if (haveCache(ctx) && ctx.chat.id === ctx.from.id)
     ctx.session.cache.responsedMessageCounter += num;
 }
+
+function sendLog(chatId) {
+  execSync("cat <log.txt >send.txt");
+  global.telegram.sendDocument(chatId, {
+    source: "send.txt",
+    filename: timeToString(Date.now()) + ".txt"
+  }).catch((e) => global.Controller.emit("Error", e));
+  execSync("echo \"\" >log.txt");
+}
+
+global.Controller.struct = {
+  on: [["Error", async (...args) => {
+    let text = Array(...args).join("");
+    await global.telegram.sendMessage(global.logChat.id, text);
+    sendLog(global.logChat.id);
+  }]],
+};
 
 class Dima {
   async canDoThis(ctx) {
@@ -103,10 +124,6 @@ class Dima {
             case "stdout": 
               ctx.reply("stdout: " + process.stdout.fd);
               updateResponseCounter(ctx, 2);
-              return true;
-            case "shutdown":
-              updateResponseCounter(ctx, 1);
-              process.exit(0);
               return true;
             case "ids": {
               let users = (await global.DataBaseController.get("User")).map(data => data.user),
@@ -246,10 +263,10 @@ class Dima {
               updateResponseCounter(ctx, chunks.length + 1);
               console.log("'", msg, "'");
             };
+            ctx.reply(cmd + ": ended");
+            updateResponseCounter(ctx, 1);
             send(...param).catch(console.log);
           });
-          await ctx.reply(cmd + ": ended");
-          updateResponseCounter(ctx, 1);
           return true;
         }
       }
@@ -257,6 +274,13 @@ class Dima {
     return ctx.chat.type !== "private";
   }
   middleware() {
+    setInterval(()=>{
+      let stat = fs.statSync("log.txt");
+      console.log("LOGSIZE: ", stat.size);
+      if (stat.size > 1E+6) {
+        sendLog(global.logChat.id);
+      }
+    }, 60000);
     return async (ctx, next) => {
       // Весьма прозаично :)
       if (await this.canDoThis(ctx)) return;

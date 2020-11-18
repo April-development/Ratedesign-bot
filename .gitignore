@@ -3,3 +3,4 @@ node_modules
 mode.js
 *.pem
 *.ssh
+*.txt

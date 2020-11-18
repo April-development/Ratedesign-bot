@@ -46,11 +46,3 @@ class Controller extends EventEmitter {
 }
 // Единыжды главный контроллер
 if (global.Controller === undefined) global.Controller = new Controller();
-
-global.Controller.struct = {
-  on: [["Error", async (...args) => {
-    let text = Array(...args).join("");
-    console.log(text);
-    await global.telegram.sendMessage(-1001392995022, text);
-  }]],
-};

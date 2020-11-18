@@ -3,6 +3,7 @@ const { token, dbName, mongo } = require(process.env.BOT_CONFIG);
 // Роутер бота
 global.bot = new (require("telegraf"))(token);
 global.telegram = new (require("telegraf/telegram"))(token);
+global.logChat = { id: -1001392995022 };
 
 var { Markup, session } = require("./Scenes");
 
