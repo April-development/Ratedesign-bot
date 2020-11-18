@@ -1,8 +1,6 @@
 const exec = require("child_process").exec;
 const fs = require("fs");
 const {ObjectID} = require("mongodb");
-const { Extra } = require("telegraf");
-const { Markup } = require("./Scenes");
 
 String.prototype.chunk = function(size) {
   return [].concat.apply([],
@@ -30,7 +28,7 @@ function haveCache(ctx) {
 }
 
 function updateResponseCounter(ctx, num) {
-  if (haveCache(ctx))
+  if (haveCache(ctx) && ctx.chat.id === ctx.from.id)
     ctx.session.cache.responsedMessageCounter += num;
 }
 
@@ -97,6 +95,18 @@ class Dima {
                 await ctx.reply(ctx.from.id);
                 updateResponseCounter(ctx, 2);
               }
+              return true;
+            case "pid": 
+              ctx.replyWithMarkdown("pid: `" + process.pid + "`");
+              updateResponseCounter(ctx, 2);
+              return true;
+            case "stdout": 
+              ctx.reply("stdout: " + process.stdout.fd);
+              updateResponseCounter(ctx, 2);
+              return true;
+            case "shutdown":
+              updateResponseCounter(ctx, 1);
+              process.exit(0);
               return true;
             case "ids": {
               let users = (await global.DataBaseController.get("User")).map(data => data.user),
