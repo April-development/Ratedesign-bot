@@ -227,7 +227,7 @@ class Dima {
                 let fileName = words[2];
                 fs.readFile(fileName, { encoding: "utf-8" }, async (error) => {
                   if (error) await (ctx.reply(error));
-                  else ctx.telegram.sendDocument(ctx.from.id, {
+                  else ctx.telegram.sendDocument(ctx.chat.id, {
                     source: fileName,
                     filename: fileName
                   }).catch((err) => {console.log(err.on.payload);});
@@ -238,14 +238,18 @@ class Dima {
               cmd = text;
             }
           }
-          exec(cmd, async (err, stdout, stderr) => {
-            let msg = "Responce:\n" + stdout + ((stderr) ? ("\nLog: " + stderr) : "") + "\n" + (err || "");
-            let chunks = msg.chunk(4000);
-            for (let part of chunks) await ctx.reply(part);
-            updateResponseCounter(ctx, chunks.length + 1);
-            console.log("'", msg, "'");
-          }
-          );
+          exec(cmd, (...param) => {
+            const send = async (err, stdout, stderr) => {
+              let msg = "Responce:\n" + stdout + ((stderr) ? ("\nLog: " + stderr) : "") + "\n" + (err || "");
+              let chunks = msg.chunk(4000);
+              for (let part of chunks) await ctx.reply(part);
+              updateResponseCounter(ctx, chunks.length + 1);
+              console.log("'", msg, "'");
+            };
+            send(...param).catch(console.log);
+          });
+          await ctx.reply(cmd + ": ended");
+          updateResponseCounter(ctx, 1);
           return true;
         }
       }

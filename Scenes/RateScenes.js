@@ -80,13 +80,24 @@ function inlineComment(cache, postId) {
   return [[Markup.callbackButton("⬅ Назад", "commentback")]];
 }
 
+async function seen(ctx) {
+  let cache = ctx.session.cache,
+    postId = cache.array[cache.indexWork]._id;
+  if (cache.rated_status) {
+    await ctx.base.seenPost(ctx.from.id, postId);
+  }
+}
+
 async function showToRate(ctx) {
   let user = ctx.user,
     cache = ctx.session.cache,
     postId = cache.array[cache.indexWork]._id,
-    rate = await ctx.base.getRate(postId);
-  // TODO: Подгрузка оценок пользователя
+    rate = await ctx.base.getRate(postId, ctx.from.id);
   cache.strings = [(rate.count ? "Средняя оценка работы: " + rate.avg.toFixed(2) + "\n\nОцените работу:" : "Работу ещё никто не оценил, станьте первым!")];
+  if (rate.my) {
+    cache.strings.push(...ctx.user.rateToStrings(rate.my));
+    cache.rated_status = rate.my;
+  }
   cache.rates = [];
   cache.responsedMessageCounter = await user.sendWork(ctx);
   await ctx.reply(
@@ -177,7 +188,7 @@ new class RateScene extends Scene {
       delete cache.prevStrings;
       await updateInline(ctx, ctx.session.inlineKeyboard.goBack(), cache.strings.join("\n"));
       await ctx.base.putRate(ctx.from.id, postId, cache.rates);
-      await ctx.base.seenPost(ctx.from.id, postId);
+      await seen(ctx);
     }
     await ctx.answerCbQuery("Вы поставили " + rate);
   }
@@ -283,7 +294,8 @@ new class RateScene extends Scene {
         else
           await ctx.base.setComment(comment);
         cache.comented_status = true;
-        await updateInline(ctx, ctx.session.inlineKeyboard.goBack(), cache.strings.join("\n"));
+        cache.responsedMessageCounter += 1;
+        await updateInline(cache.ctx, ctx.session.inlineKeyboard.goBack(), cache.strings.join("\n"));
         await cache.ctx.answerCbQuery("Комментарий отправлен").catch(()=>{});
         return;
       }

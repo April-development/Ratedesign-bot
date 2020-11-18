@@ -21,7 +21,7 @@ global.typesMark = [
 global.typesMarkName = [
   [""],
   [
-    "UX(юзабилити): ",
+    "UX (юзабилити): ",
     "UI: ",
     "Типографика: ",
     "Реализация стиля и композиции: ",
@@ -73,7 +73,7 @@ class User extends Wrapper {
             (ctx.update.callback_query) ? ctx.update.callback_query.data : ""
         );
         if (ctx.session.mutex.isLocked()) {
-          if (ctx.message) ctx.deleteMessage();
+          if (ctx.message && ctx.chat.type === "private") ctx.deleteMessage();
           return;
         }
         const release = await ctx.session.mutex.acquire(); // Делаем всё последовательно
@@ -131,7 +131,7 @@ class User extends Wrapper {
       messageToDelete.push(ctx.update.message.message_id--);
     }
     // Делаем массив запросов на удаление 
-    let promises = messageToDelete.map(async (messageId) => await ctx.telegram.deleteMessage(ctx.from.id, messageId).catch((err) => console.log("Error", err.on)));
+    let promises = messageToDelete.map(async (messageId) => await ctx.telegram.deleteMessage(ctx.chat.id, messageId).catch((err) => console.log("Error", err.on)));
     // Дожидаемся когда все они будут завершены
     (await Promise.all(promises));
     this.free(ctx); //  Конец сложных запросов, можно разжать булки
@@ -164,7 +164,7 @@ class User extends Wrapper {
     cache.responsedMessageCounter = post.photos.length;
 
     await ctx.telegram.sendMediaGroup(
-      ctx.from.id,
+      ctx.chat.id,
       this.typedAsPhoto(post.photos)
     ).catch(async (err) => {
       global.Controller.emit("Error", err.on);
@@ -242,7 +242,7 @@ class User extends Wrapper {
     //  Отправка превьюшек полльхователю
     await ctx.telegram
       .sendMediaGroup(
-        ctx.from.id,
+        ctx.chat.id,
         this.typedAsPhoto(works.map((it) => it.preview))
       )
       .catch(async (e) => {
@@ -313,7 +313,13 @@ class User extends Wrapper {
     keyboard = keyboard && Markup.keyboard(keyboard).resize().extra();
     return await ctx.reply(msg, keyboard);
   }
-
+  rateToStrings(rate) {
+    let strings = [];
+    rate.forEach((mark, i) => {
+      strings.push(global.typesMarkName[+rate.type][i] + global.numEmoji[+mark]);
+    });
+    return strings;
+  }
   //  Корневая сцена
   async goMain(ctx) {
     await ctx.scene.leave();

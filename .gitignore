@@ -1,3 +1,5 @@
 node_modules
 .idea
 mode.js
+*.pem
+*.ssh

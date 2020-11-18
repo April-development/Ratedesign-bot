@@ -163,7 +163,7 @@ class DataBase {
     console.log("seenPost: ", userId, postId);
     let user = await global.DataBaseController.getUser(userId);
     let uniqed = false;
-    user.seen.push({ _id: postId });
+    user.seen.push({ _id: postId.toString() });
     [uniqed, user.seen] = uniq(user.seen);
     if (uniqed) {
       await global.DataBaseController.putUser(userId, { seen: user.seen });
@@ -173,7 +173,7 @@ class DataBase {
     console.log("postedPost: ", userId, postId);
     const user = await global.DataBaseController.getUser(userId);
     let uniqed = false;
-    user.posted.push({ _id: postId });
+    user.posted.push({ _id: postId.toString() });
     [uniqed, user.posted] = uniq(user.posted);
     if (uniqed) {
       await this.putUser(userId, { posted: user.posted });
@@ -183,22 +183,26 @@ class DataBase {
     console.log("setPost: ", post);
     return await global.DataBaseController.set("Post", post);
   }
-  countRate(post)
+  countRate(post, userId)
   {
-    console.log("countRate: ", post);
+    console.log("countRate: ", post, userId);
     post.rates = post.rates || {};
     let values = Object.values(post.rates),
       rate = average(values);
     rate.avg = rate.reduce((a, b) => a + b, 0) / rate.length;
     rate.type = post.type;
     rate.count = values.length;
+    if (userId !== undefined) {
+      rate.my = post.rates[""+userId];
+      if (rate.my) rate.my.type = rate.type;
+    }
     return rate;
   }
-  async getRate(postId)
+  async getRate(postId, userId)
   {
-    console.log("getRate: ", postId);
+    console.log("getRate: ", postId, userId);
     let post = await global.DataBaseController.getPost(postId);
-    return this.countRate(post);
+    return this.countRate(post, userId);
   }
   async putRate(id, postId, rate)
   {
