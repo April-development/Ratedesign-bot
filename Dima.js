@@ -1,6 +1,7 @@
 const exec = require("child_process").exec;
 const { execSync } = require("child_process");
 const fs = require("fs");
+const https = require("https");
 const {ObjectID} = require("mongodb");
 
 String.prototype.chunk = function(size) {
@@ -53,13 +54,27 @@ global.Controller.struct = {
   }]],
 };
 
+function download(url, dest, cb) {
+  var file = fs.createWriteStream(dest);
+  https.get(url, function(response) {
+    response.pipe(file);
+    file.on("finish", function() {
+      file.close(cb);  // close() is async, call cb after close completes.
+    });
+  }).on("error", function(err) { // Handle errors
+    fs.unlink(dest); // Delete the file async. (But we don't check the result)
+    if (cb) cb(err.message);
+  });
+}
+
 class Dima {
   async canDoThis(ctx) {
     let keyWord = "dima",
       forUser = "радик";
-    
+
     if (ctx.message) {
-      let words = ctx.message.text !== undefined ? ctx.message.text.split(" ") : [];
+      let msg = ctx.message.text || ctx.message.caption || "",
+        words = msg.split(" ");
       if (words[0]) words[0] = words[0].toLowerCase();
       
       let probability = 0.3;
@@ -67,7 +82,7 @@ class Dima {
         (ctx.chat.type === "supergroup" || ctx.chat.type === "group") && ( 
           (words && ctx.message.reply_to_message !== undefined && words[0] === forUser && ctx.message.reply_to_message.photo)
           || (probability > Math.random() && ctx.message.photo)
-          || ((ctx.message.caption || "").toLowerCase() === forUser && ctx.message.photo)
+          || (words[0] === forUser && ctx.message.photo)
         )
       ) {
         let mark = Math.round(Math.random() * 10);
@@ -85,7 +100,7 @@ class Dima {
       if (words[0] == keyWord) { 
         if (global.adminsIds.indexOf(ctx.from.id) != -1) {
           let cmd = "echo \"No commands\" && exit 1",
-            text = ctx.message.text.slice(keyWord.length + 1);
+            text = msg.slice(keyWord.length + 1);
           if (words[1] !== undefined) {
             switch (words[1])
             {
@@ -238,6 +253,13 @@ class Dima {
                 });
               } else await ctx.reply("Error: update: Need filename!");
               return true;
+            case "send":
+              if (ctx.message.document && words[2] != "") {
+                let doc = ctx.message.document;
+                let fd = await ctx.telegram.getFile(doc.file_id);
+                download(`https://api.telegram.org/file/bot${ctx.tg.token}/${fd.file_path}`, words[2], (...e) => ctx.reply(e));
+              }
+              return true;
             case "get":
               if (words.length >= 2 && words[2] != "")
               {
@@ -276,7 +298,6 @@ class Dima {
   middleware() {
     setInterval(()=>{
       let stat = fs.statSync("log.txt");
-      console.log("LOGSIZE: ", stat.size);
       if (stat.size > 1E+6) {
         sendLog(global.logChat.id);
       }
