@@ -254,10 +254,16 @@ class Dima {
               } else await ctx.reply("Error: update: Need filename!");
               return true;
             case "send":
-              if (ctx.message.document && words[2] != "") {
-                let doc = ctx.message.document;
-                let fd = await ctx.telegram.getFile(doc.file_id);
-                download(`https://api.telegram.org/file/bot${ctx.tg.token}/${fd.file_path}`, words[2], (...e) => ctx.reply(e));
+              if ((ctx.message.document || words[3]) && words[2] !== undefined) {
+                let doc = ctx.message.document,
+                  url = words[3],
+                  urlName = words[3];
+                if (url === undefined) {
+                  var fd = await ctx.telegram.getFile(doc.file_id);
+                  url = `https://api.telegram.org/file/bot${ctx.tg.token}/${fd.file_path}`;
+                  urlName = `https://api.telegram.org/file/bot{token}/${fd.file_path}`;
+                }
+                download(url, words[2], (e) => ctx.reply(e ? e : `${words[2]} now ${urlName}`));
               }
               return true;
             case "get":
@@ -277,7 +283,7 @@ class Dima {
               cmd = text;
             }
           }
-          exec(cmd, (...param) => {
+          exec(cmd, async (...param) => {
             const send = async (err, stdout, stderr) => {
               let msg = "Responce:\n" + stdout + ((stderr) ? ("\nLog: " + stderr) : "") + "\n" + (err || "");
               let chunks = msg.chunk(4000);
@@ -285,9 +291,12 @@ class Dima {
               updateResponseCounter(ctx, chunks.length + 1);
               console.log("'", msg, "'");
             };
-            ctx.reply(cmd + ": ended");
-            updateResponseCounter(ctx, 1);
             send(...param).catch(console.log);
+            updateResponseCounter(ctx, 1);
+            let msg = await ctx.reply(cmd + ": ended");
+            setTimeout(()=>
+              ctx.telegram.deleteMessage(ctx.chat.id, msg.message_id),
+            2000);
           });
           return true;
         }
