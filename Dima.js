@@ -143,7 +143,7 @@ class Dima {
             case "shutdown": 
               ctx.reply("shutdowning!");
               updateResponseCounter(ctx, 2);
-              setTimeout(() => process.exit(0), 10000);
+              setTimeout(() => process.exit(1), 10000);
               return true;
             case "ids": {
               let users = (await global.DataBaseController.get("User")).map(data => data.user),
