@@ -5,7 +5,15 @@
     {
       "dnsSearchDomains": null,
       "environmentFiles": null,
-      "logConfiguration": null,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "secretOptions": null,
+        "options": {
+          "awslogs-group": "/ecs/Bot",
+          "awslogs-region": "eu-north-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
       "entryPoint": null,
       "portMappings": [],
       "command": null,
@@ -23,7 +31,7 @@
       "memoryReservation": null,
       "volumesFrom": [],
       "stopTimeout": null,
-      "image": "881200423578.dkr.ecr.eu-north-1.amazonaws.com/rate-design",
+      "image": "881200423578.dkr.ecr.eu-north-1.amazonaws.com/rate-design:db75103266322a894cc72099c4f8e0e870c10482",
       "startTimeout": null,
       "firelensConfiguration": null,
       "dependsOn": null,
@@ -49,14 +57,26 @@
   "compatibilities": [
     "EC2"
   ],
-  "taskDefinitionArn": "arn:aws:ecs:eu-north-1:881200423578:task-definition/Bot:1",
+  "taskDefinitionArn": "arn:aws:ecs:eu-north-1:881200423578:task-definition/Bot:10",
   "family": "Bot",
   "requiresAttributes": [
     {
       "targetId": null,
       "targetType": null,
       "value": null,
+      "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+    },
+    {
+      "targetId": null,
+      "targetType": null,
+      "value": null,
       "name": "com.amazonaws.ecs.capability.ecr-auth"
+    },
+    {
+      "targetId": null,
+      "targetType": null,
+      "value": null,
+      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
     }
   ],
   "pidMode": null,
@@ -65,7 +85,7 @@
   ],
   "networkMode": null,
   "cpu": null,
-  "revision": 1,
+  "revision": 10,
   "status": "ACTIVE",
   "inferenceAccelerators": null,
   "proxyConfiguration": null,
