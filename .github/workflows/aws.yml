@@ -76,5 +76,5 @@ jobs:
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: Bot
-        cluster: RateDesignCluster
+        cluster: RateDesign
         wait-for-service-stability: true
