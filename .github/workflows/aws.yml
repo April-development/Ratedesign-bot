@@ -24,9 +24,8 @@
 #    and best practices on handling the access key credentials.
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [created]
 
 name: Deploy to Amazon ECS
 
@@ -54,7 +53,7 @@ jobs:
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: rate-design
+        ECR_REPOSITORY: rd_bot
         IMAGE_TAG: ${{ github.sha }}
       run: |
         # Build a docker container and
@@ -77,5 +76,5 @@ jobs:
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: Bot
-        cluster: RateDesignCluster
+        cluster: RateDesign
         wait-for-service-stability: true
