@@ -77,7 +77,7 @@ class Dima {
         words = msg.split(" ");
       if (words[0]) words[0] = words[0].toLowerCase();
       
-      let probability = 0.3;
+      let probability = 0.1;
       if (
         (ctx.chat.type === "supergroup" || ctx.chat.type === "group") && ( 
           (words && ctx.message.reply_to_message !== undefined && words[0] === forUser && ctx.message.reply_to_message.photo)
@@ -147,9 +147,10 @@ class Dima {
               return true;
             case "ids": {
               let users = (await global.DataBaseController.get("User")).map(data => data.user),
-                responce = "";
+                responce = "",
+                id = 1;
               for (let user of users)
-                responce += userInfo(user);
+                responce += id + ": " + userInfo(user);
               let chunks = responce.chunk(4000);
               for (let part of chunks) await ctx.reply(part);
               updateResponseCounter(ctx, chunks.length + 1);
