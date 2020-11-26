@@ -6,7 +6,7 @@
     {
       "name": "Bot",
       "image": "881200423578.dkr.ecr.eu-north-1.amazonaws.com/rd_bot",
-      "memory": "500",
+      "memory": "400",
       "resourceRequirements": null,
       "essential": true,
       "portMappings": [],
