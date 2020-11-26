@@ -72,7 +72,7 @@ class User extends Wrapper {
           (ctx.message) ? "\"" + ctx.message.text + "\"" :
             (ctx.update.callback_query) ? ctx.update.callback_query.data : ""
         );
-        if (ctx.session.mutex.isLocked()) {
+        if (ctx.session.mutex.isLocked() && !(ctx.message && ctx.message.media_group_id)) {
           if (ctx.message && ctx.chat.type === "private") ctx.deleteMessage();
           return;
         }
